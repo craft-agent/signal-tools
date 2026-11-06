@@ -26,6 +26,22 @@ export type StoredMessage = {
   mentions: string | null
 }
 
+/** A JSON column, read; null when it is empty or does not parse. */
+export function readJson(json: string | null): unknown {
+  if (!json) return null
+  try {
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+/** A JSON column that holds a list; an empty one when it holds anything else. */
+export function readList<T>(json: string | null): T[] {
+  const value = readJson(json)
+  return Array.isArray(value) ? (value as T[]) : []
+}
+
 /** One reaction to a message. */
 export type StoredReaction = { reactor: string; emoji: string }
 

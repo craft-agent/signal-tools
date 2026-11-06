@@ -1,6 +1,10 @@
+import { ToolError } from "../errors"
 import { cutText } from "../pages"
+import { isChatId } from "../signal/ids"
 import type { Mirror } from "../signal/mirror"
+import type { ChatRef } from "./message-schema"
 import type { People } from "./people"
+import { placeholders } from "./sql"
 
 /** What a chat with oneself is called. */
 export const NOTE_TO_SELF = "Note to Self"
@@ -25,6 +29,51 @@ export function findChat(mirror: Mirror, id: string): StoredChat | null {
   return row ?? null
 }
 
+/** `chat` as a method's argument: a chat id, else `invalid_argument` (a name or number is never a chat). */
+export function chatIdArgument(chat: string, method: string): string {
+  if (!isChatId(chat)) {
+    throw new ToolError(
+      "invalid_argument",
+      `chat must be a chat id (a person's account id, or group:<id>) from list; a name or number is not accepted by ${method}.`,
+    )
+  }
+  return chat
+}
+
+/** `chat` as a required argument: its validated id, or `invalid_argument` when missing or not a chat id. */
+export function requireChatId(chat: string | undefined, method: string): string {
+  if (chat === undefined) {
+    throw new ToolError("invalid_argument", `chat is required for ${method}: pass a chat id from list.`)
+  }
+  return chatIdArgument(chat, method)
+}
+
+/** The chat with this id, or `not_found` when this mirror has none. */
+export function existingChat(mirror: Mirror, id: string): StoredChat {
+  const chat = findChat(mirror, id)
+  if (!chat) throw new ToolError("not_found", "No chat with this id in this account's mirror.")
+  return chat
+}
+
+/** A chat id argument that must be present, valid and in this account's mirror. */
+export function requireChat(mirror: Mirror, chat: string | undefined, method: string): StoredChat {
+  return existingChat(mirror, requireChatId(chat, method))
+}
+
+/** `chat` as an optional argument: its stored row, or undefined when absent. */
+export function optionalChat(mirror: Mirror, chat: string | undefined, method: string): StoredChat | undefined {
+  return chat === undefined ? undefined : existingChat(mirror, chatIdArgument(chat, method))
+}
+
+/** The chats with these ids that this mirror has, by id. */
+export function findChats(mirror: Mirror, ids: readonly string[]): Map<string, StoredChat> {
+  if (ids.length === 0) return new Map()
+  const rows = mirror
+    .prepare(`SELECT ${CHAT_COLUMNS} FROM chats WHERE id IN (${placeholders(ids.length)})`)
+    .all(...ids) as StoredChat[]
+  return new Map(rows.map((row) => [row.id, row]))
+}
+
 /** The account ids whose names naming `chats` takes: the person chats. */
 export function personIds(chats: readonly StoredChat[]): string[] {
   return chats.filter((chat) => chat.kind === "person").map((chat) => chat.id)
@@ -47,6 +96,11 @@ export const MAX_NAME_LENGTH = 1000
 export function shownName(name: string | null): { name: string | null; name_cut?: true } {
   if (name === null || name.length <= MAX_NAME_LENGTH) return { name }
   return { name: cutText(name, MAX_NAME_LENGTH), name_cut: true }
+}
+
+/** A chat reference header as returned in `chat` or on messages. */
+export function chatHeader(chat: StoredChat, people: People): ChatRef {
+  return { id: chat.id, kind: chat.kind, ...shownName(chatName(chat, people)) }
 }
 
 /** A person's number when known; never the user's own, whose chat is Note to Self. */

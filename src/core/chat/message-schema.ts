@@ -12,6 +12,22 @@ export const UNSUPPORTED_NOTE = "This kind of message is not readable here; see 
 export const PRIVATE_NOTE =
   "Its sender meant it not to be kept: show it to the user only, and do not quote or pass it on unless the user asks."
 
+const nameCut = z
+  .literal(true)
+  .optional()
+  .describe("Set when the name was longer than the most a result carries and was cut.")
+
+/** A chat as a result names it: its id, kind and name. */
+export const chatRef = z.object({
+  id: z.string().describe("The chat id: a person's account id or `group:<id>`."),
+  kind: z.enum(["person", "group"]),
+  name: z.string().nullable().describe("`Note to Self` for the user's own chat, a group's title, or a person's name."),
+  name_cut: nameCut,
+})
+
+/** A chat reference header in results and messages. */
+export type ChatRef = z.infer<typeof chatRef>
+
 const file = z.object({
   name: z.string().optional().describe("The name the file was sent with."),
   type: z.string().optional().describe("Its content type."),
@@ -43,6 +59,7 @@ export const messageEntry = z.object({
   time: localTimeSchema.describe("When it was sent, in local time with offset."),
   from: z.string().describe("`me` for the user's own messages, else the sender's name."),
   from_id: z.string().optional().describe("The sender's account id; absent for the user's own messages."),
+  chat: chatRef.optional().describe("search: the chat the message is in."),
   text: z.string().optional().describe("The text as it was sent, with mentions written as `@name`."),
   text_cut: z.literal(true).optional().describe("Set when this message alone was too long and was cut."),
   omitted: z
@@ -74,4 +91,5 @@ export const messageEntry = z.object({
     .describe("On a timer change: the disappearing timer it set, in seconds; 0 is off."),
 })
 
+/** One message in a result. */
 export type MessageEntry = z.infer<typeof messageEntry>

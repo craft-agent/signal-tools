@@ -1,10 +1,10 @@
-import { createHash } from "node:crypto"
 import { z } from "zod"
 import { foldCase } from "../fold"
 import { clampLimit, encodeCursor, fitItems, notACursor, readCursor, type Cuttable } from "../pages"
 import type { Mirror } from "../signal/mirror"
 import { formatLocalTime } from "../time"
-import { CHAT_COLUMNS, chatName, chatNumber, personIds, shownName, type StoredChat } from "./chat-rows"
+import { CHAT_COLUMNS, chatHeader, chatName, chatNumber, personIds, type StoredChat } from "./chat-rows"
+import { fingerprint } from "./filter"
 import { messageEntries } from "./message"
 import { cutMessage, dropMetadata, messageTextLength } from "./message-cut"
 import { DATA_NOTE } from "./message-schema"
@@ -18,16 +18,6 @@ import { LIMITS, type ChatEntry, type ChatReadInput, type ChatReadOutput } from 
  * cursor continues one list and no other.
  */
 const listCursor = z.strictObject({ ts: z.number().int(), id: z.string(), filter: z.string() })
-
-/** A short stand-in for the filters a list was made under, so that a long query does not outgrow the room a cursor has. */
-function filterOf(query: string, unreadOnly: boolean): string {
-  return createHash("sha256")
-    .update(JSON.stringify([query, unreadOnly]))
-    .digest("base64url")
-    .slice(0, FILTER_LENGTH)
-}
-
-const FILTER_LENGTH = 16
 
 /** Separators a number is typed with, which a query's digits ignore. */
 const NUMBER_SEPARATORS = /[\s().-]/g
@@ -75,7 +65,7 @@ function matches(chat: StoredChat, people: People, query: string): boolean {
 }
 
 function entryOf(chat: StoredChat, people: People, unread: number): ChatEntry {
-  const entry: ChatEntry = { id: chat.id, kind: chat.kind, ...shownName(chatName(chat, people)), unread }
+  const entry: ChatEntry = { ...chatHeader(chat, people), unread }
   const number = chatNumber(chat, people)
   if (number !== null) entry.number = number
   if (chat.last_ts !== null) entry.last_activity_at = formatLocalTime(chat.last_ts)
@@ -127,7 +117,7 @@ export function listChats(
   const query = foldCase(args.query ?? "").trim()
   const unreadOnly = args.unread === true
   const after = args.cursor === undefined ? undefined : readCursor(args.cursor, "cursor", listCursor)
-  const filter = filterOf(query, unreadOnly)
+  const filter = fingerprint(query, unreadOnly)
   if (after && after.filter !== filter) throw notACursor("cursor")
   const people = new People(mirror, me)
   const unread = unreadCounts(mirror)

@@ -5,7 +5,7 @@ import type { StoredAttachment, StoredMention, StoredQuote } from "../signal/mir
 import { formatLocalTime } from "../time"
 import { renderMentions } from "./mentions"
 import { PRIVATE_NOTE, UNSUPPORTED_NOTE, type MessageEntry } from "./message-schema"
-import { loadRelated, type Related, type StoredMessage } from "./message-rows"
+import { loadRelated, readJson, readList, type Related, type StoredMessage } from "./message-rows"
 import { OWN_NAME, type People } from "./people"
 
 const MS_PER_SECOND = 1000
@@ -16,20 +16,6 @@ type Parsed = {
   files: StoredAttachment[]
   quote: StoredQuote | null
   mentions: StoredMention[]
-}
-
-function readJson(json: string | null): unknown {
-  if (!json) return null
-  try {
-    return JSON.parse(json)
-  } catch {
-    return null
-  }
-}
-
-function readList<T>(json: string | null): T[] {
-  const value = readJson(json)
-  return Array.isArray(value) ? (value as T[]) : []
 }
 
 function parse(row: StoredMessage): Parsed {
