@@ -130,6 +130,18 @@ Add the server to the host's MCP configuration. Flags go in `args`:
 
 Each toolset comes with a skill that tells an agent how to use its tools.
 
+### Account (`account`)
+
+| Tool                  | What it does                                                                        | Class |
+| --------------------- | ----------------------------------------------------------------------------------- | ----- |
+| `signal_account_read` | each label: linked or not, the sync service's state, the last receive and next step | read  |
+
+It reads local state only: no daemon, no network, and no number, account id
+or key in its result. The skill is
+[`signal-account`](skills/signal-account/SKILL.md), shown as
+`signal-tools:signal-account` in Claude Code and `signal-tools:account` in
+Hermes.
+
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID
@@ -240,6 +252,48 @@ which you install yourself. They never read another client's data.
   in use. An unlinked label is linked again from the phone.
 - **signal-cli releases age out.** A release more than about three months old
   may stop working with Signal's servers, so keep it updated.
+
+### Linking a device and running the sync service
+
+The tools are tested against signal-cli 0.14. Install it first: on macOS
+`brew install signal-cli`; elsewhere a
+[release](https://github.com/AsamK/signal-cli/releases) (the JVM build needs
+Java 25 or later). macOS and Linux are supported; Windows is
+[#11](https://github.com/craft-agent/signal-tools/issues/11).
+
+```sh
+# Link: on the phone, Signal > Settings > Linked devices > Link new device,
+# then scan the code this prints.
+signal-tools-cli link --account work
+
+# Start receiving at logon, and restart after a failure.
+signal-tools-cli service install --account work
+signal-tools-cli service status --account work
+```
+
+`--account` may be left out when only one label exists (`link` names a new
+one `default`), and every command takes `--state-dir` like the tools.
+
+| Command                                        | What it does                                                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `link [--account <label>] [--device-name <n>]` | links this machine as a device of the phone, showing the code to scan; `--show-uri` also prints the address the code stands for |
+| `sync [--account <label>]`                     | runs the sync service in the foreground, logging to standard error, until it is stopped                                         |
+| `service install \| uninstall \| status`       | registers the sync service as a launchd agent (macOS) or a systemd user unit (Linux), removes it, or reports it                 |
+| `remove --account <label> [--yes]`             | uninstalls the service and deletes the label's keys, signal-cli's data and history, after the label is typed back               |
+
+- **The service records this package's paths**, so run `service install`
+  again after updating the package. On macOS its log is
+  `~/Library/Logs/io.github.craft-agent.signal-tools/<label>.log`; on Linux,
+  `journalctl --user -u <unit>` as `service status` shows, and
+  `loginctl enable-linger` keeps it running while you are logged out.
+- **A phone takes at most five linked devices**, and each label is one of
+  them.
+- **Removing a label does not unlink it on the phone**: a linked device cannot
+  take itself off, so remove it under Settings > Linked devices as well.
+- **To link a label again** after Signal unlinked it, run `link` again: the
+  old keys are moved aside and the history is kept, as long as the phone holds
+  the same account. A different account gets a label of its own.
+- `signal_account_read` tells an agent which of these steps a label needs.
 
 ## Layout
 
