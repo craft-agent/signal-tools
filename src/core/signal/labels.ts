@@ -44,6 +44,8 @@ export type LabelPaths = {
   socket: string // <dir>/daemon.sock
   mirror: string // <dir>/mirror.sqlite
   outbox: string // <dir>/outbox
+  daemonPid: string // <dir>/daemon.pid (the running daemon's process id, written by the sync service)
+  syncLock: string // <dir>/sync.lock (the process id of the sync service running for the label)
 }
 
 /**
@@ -65,6 +67,8 @@ export function labelPaths(stateDir: string, label: string): LabelPaths {
     socket: join(dir, "daemon.sock"),
     mirror: join(dir, "mirror.sqlite"),
     outbox: join(dir, "outbox"),
+    daemonPid: join(dir, "daemon.pid"),
+    syncLock: join(dir, "sync.lock"),
   }
   const socketBytes = Buffer.byteLength(paths.socket, "utf8")
   if (socketBytes > MAX_SOCKET_PATH_BYTES) {

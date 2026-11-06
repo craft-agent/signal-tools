@@ -78,6 +78,8 @@ describe("labelPaths", () => {
     expect(paths.socket).toBe(join(stateDir, "work", "daemon.sock"))
     expect(paths.mirror).toBe(join(stateDir, "work", "mirror.sqlite"))
     expect(paths.outbox).toBe(join(stateDir, "work", "outbox"))
+    expect(paths.daemonPid).toBe(join(stateDir, "work", "daemon.pid"))
+    expect(paths.syncLock).toBe(join(stateDir, "work", "sync.lock"))
   })
 
   test("throws internal_error on relative stateDir", () => {
