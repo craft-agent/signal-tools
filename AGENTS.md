@@ -38,6 +38,21 @@ tagged `v<version>`; consumers pin a tag or the same npm version.
   annotations are hints, never the boundary.
 - **Every program a tool runs goes through one runner**, which fixes a
   non-interactive environment and maps failures to error codes.
+- **Every call to signal-cli goes through the one daemon client**, on the
+  label's own socket, and reads each recipient's result; a tool never opens
+  the socket itself.
+- **Only the sync service receives, and it stops with its daemon.** signal-cli
+  confirms a message to Signal before handing it on, so a second receiver, or
+  a daemon left running without the service, loses messages silently.
+- **Reads open the mirror read-only.** No read writes the mirror or needs the
+  daemon.
+- **The keys never leave the state directory.** Nothing from signal-cli's data
+  reaches a result, an error or a log; tests use made-up accounts and numbers
+  only.
+- **A chat is an id, never a name or a number**, and is looked up only in its
+  label's mirror.
+- **A send that may have gone out throws `uncertain`**, never success or a
+  plain failure: a wrong guess sends the message twice.
 - **Every commit stays small.** The pre-commit hook rejects a commit over 500
   reviewable changed lines; split the change instead of raising the limit.
 
