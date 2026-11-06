@@ -194,3 +194,13 @@ describe("usage", () => {
     expect((await cli(["list"], "", { env: { DEMO_CONFIRM: "ask" } })).code).toBe(EXIT_OK)
   })
 })
+
+describe("person commands", () => {
+  test.each([["link"], ["sync"], ["service"], ["remove"]])("%s is handed its own arguments", async (name) => {
+    const run = await cli([name, "--bogus"])
+    expect(run.code).toBe(EXIT_USAGE)
+    expect(run.stdout).toBe("")
+    expect(run.stderr).toContain("--bogus")
+    expect(run.stderr).not.toContain("Unknown command")
+  })
+})
