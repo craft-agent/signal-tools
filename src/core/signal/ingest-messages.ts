@@ -2,6 +2,7 @@ import { isRecord } from "./daemon-errors"
 import { GROUP_ID_PATTERN, accountId, groupChat } from "./ids"
 import type { IngestContext, IngestResult } from "./ingest-context"
 import { deleteMessage } from "./ingest-delete"
+import { GROUPS_STALE_META } from "./mirror-meta"
 import { setMeta, type Mirror } from "./mirror"
 import { findMessage, isDeleted, touchChat } from "./mirror-rows"
 import { intOrNull, readAttachments, readMentions, readQuote, textOrNull, toJson } from "./mirror-parts"
@@ -154,7 +155,7 @@ export function applyDataMessage(
     !data.message &&
     !hasItems(data.attachments)
   ) {
-    setMeta(mirror, { groups_stale: 1 })
+    setMeta(mirror, { [GROUPS_STALE_META]: 1 })
     result.done.push("group-update")
   } else {
     const done = storeMessage(mirror, ctx, sender, data)

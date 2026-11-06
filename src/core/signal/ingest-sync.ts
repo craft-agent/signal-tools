@@ -4,6 +4,7 @@ import { absorb, type IngestContext, type IngestResult } from "./ingest-context"
 import { editMessage } from "./ingest-edit"
 import { applyDataMessage, groupChatOf, type Sender } from "./ingest-messages"
 import { intOrNull, textOrNull } from "./mirror-parts"
+import { GROUPS_STALE_META } from "./mirror-meta"
 import { setMeta, type Mirror } from "./mirror"
 import { contactUuid, findMessage, touchChat } from "./mirror-rows"
 
@@ -54,7 +55,7 @@ export function applySyncMessage(mirror: Mirror, ctx: IngestContext, sync: Recor
     for (const read of sync.readMessages as unknown[]) result.done.push(...applyRead(mirror, ctx, read))
   }
   if (typeof sync.type === "string" && DIRECTORY_SYNC_TYPES.includes(sync.type)) {
-    setMeta(mirror, { groups_stale: 1 })
+    setMeta(mirror, { [GROUPS_STALE_META]: 1 })
     result.done.push(sync.type.toLowerCase().replace("_", "-"))
   }
   return result
