@@ -135,6 +135,7 @@ Every entry point takes the same settings:
 - **`confirm`** is `harness` (the default) or `elicitation`; it says who asks
   before an administrative tool acts (see "Write classes"). The default leaves
   the question to the harness, whose approval every user already knows.
+- **`state_dir`**: where every account's state lives (see "Accounts and state").
 
 ## The core contract
 
@@ -266,6 +267,11 @@ Every entry point takes the same settings:
   their own; the text stays as it was sent.
 - **Every read opens the mirror read-only and needs no daemon**, so reading
   works while the service is down and can never change what was received.
+  Read-only means every write refused (`query_only`), never migrating, and
+  never creating the mirror; the connection itself is SQLite's ordinary one,
+  since a read-only connection cannot open a WAL database once its `-shm`
+  file is gone, and a WAL reader takes part in the shared-memory locking
+  that lets it read while the service writes.
 - **Other people's words are data.** Message text, names, captions and file
   names are written by other people; every read tool's description and the
   skills say so, and nothing a message says is followed as an instruction.

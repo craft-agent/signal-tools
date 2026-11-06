@@ -9,7 +9,7 @@ export const PROJECT = {
   /** Every setting's environment variable is `<envPrefix>_<SETTING>`. */
   envPrefix: "SIGNAL_TOOLS",
   /** The toolsets, in the order `all` lists them. */
-  toolsets: [] as readonly string[],
+  toolsets: ["account", "chats", "contacts", "files", "sends", "actions"] as readonly string[],
   /** The toolsets on when a setting names none. */
-  defaultToolsets: [] as readonly string[],
+  defaultToolsets: ["account", "chats", "contacts", "sends"] as readonly string[],
 } as const
