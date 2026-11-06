@@ -16,6 +16,7 @@ import {
 import { MIRROR_VERSION } from "../signal/mirror-schema"
 import { makeTempDir, ME, NOW, NUMBER } from "../signal/mirror.testing"
 import { LINKED_ACCOUNT, writeSignalCliAccount } from "../signal/signal-cli.testing"
+import { formatLocalTime } from "../time"
 import { annotations, invoke } from "../tool"
 import { signalAccountRead } from "./read"
 
@@ -160,9 +161,11 @@ describe("account read: service health", () => {
     expect(account?.service).toBe(status)
     expect(account?.action).toBeNull()
     expect(account?.hint).toBeNull()
-    expect(account?.last_received_at).toBe(new Date(NOW).toISOString())
-    expect(account?.subscribed_at).toBe(new Date(NOW - 1000).toISOString())
-    expect(account?.refreshed_at).toBe(new Date(NOW - 2000).toISOString())
+    expect(account?.last_received_at).toBe(formatLocalTime(NOW))
+    expect(account?.subscribed_at).toBe(formatLocalTime(NOW - 1000))
+    expect(account?.refreshed_at).toBe(formatLocalTime(NOW - 2000))
+    expect(account?.last_received_at).toMatch(/\.\d{3}[+-]\d{2}:\d{2}$/)
+    expect(Date.parse(account?.last_received_at ?? "")).toBe(NOW)
   })
 
   test.each(["running", "starting"])("%s with a dead lock is not running", async (status) => {
