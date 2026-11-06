@@ -9,6 +9,12 @@ const DEFAULT_CONNECT_TIMEOUT_MS = 5_000
 const DEFAULT_CALL_TIMEOUT_MS = 30_000
 const DEFAULT_MAX_LINE_LENGTH = 64 * 1024 * 1024
 const NOT_RUNNING_MESSAGE = "The Signal daemon is not running at this account's socket."
+const DAEMON_NOT_RUNNING = Symbol("daemon not running")
+
+/** Whether the daemon client failed because no daemon was listening at the account's socket. */
+export function isDaemonNotRunning(error: unknown): boolean {
+  return error instanceof ToolError && error.cause === DAEMON_NOT_RUNNING
+}
 
 export type CallOptions = {
   /** Defaults to `"read"`. */
@@ -107,7 +113,7 @@ export class DaemonConnection {
         resolve(new DaemonConnection(socket, maxLineLength))
       }
       // The OS error and the path are left out on purpose: the path holds the state directory.
-      const onFailure = () => stop(new ToolError("upstream_error", NOT_RUNNING_MESSAGE))
+      const onFailure = () => stop(new ToolError("upstream_error", NOT_RUNNING_MESSAGE, { cause: DAEMON_NOT_RUNNING }))
       const onAbort = () => stop(abortError(signal!))
 
       socket.once("connect", onConnect)
