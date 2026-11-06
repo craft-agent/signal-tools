@@ -135,6 +135,7 @@ Every entry point takes the same settings:
 - **`confirm`** is `harness` (the default) or `elicitation`; it says who asks
   before an administrative tool acts (see "Write classes"). The default leaves
   the question to the harness, whose approval every user already knows.
+- **`state_dir`**: where every account's state lives (see "Accounts and state").
 
 ## The core contract
 
