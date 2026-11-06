@@ -48,7 +48,8 @@ describe("linkDevice failures", () => {
 
   test("no scan in time stops signal-cli and says so", async () => {
     const t = fixture("link-hang")
-    const error = await failureOf(t.link({ timeoutMs: 300 }))
+    // Long enough for the fake to start and print the address on a loaded machine.
+    const error = await failureOf(t.link({ timeoutMs: 3000 }))
 
     expect((error as ToolError).code).toBe("upstream_error")
     expect(error.message).toBe("No phone scanned the code in time; run the link again.")
