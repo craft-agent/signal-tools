@@ -80,6 +80,7 @@ says what to do next.
 | `rate_limited`     | the service refused the call for its rate limit                            |
 | `declined`         | the person declined a confirmation the tool asked for                      |
 | `upstream_error`   | the service or program the tool calls failed; the message carries its text |
+| `uncertain`        | a write may have taken effect; check before trying it again                |
 | `internal_error`   | a bug in a tool or an entry point, such as a result off its schema         |
 
 A project adds a code to `src/core/errors.ts` and to this table together.
@@ -175,3 +176,129 @@ Every entry point takes the same settings:
   against a fake of that program on `PATH`.
 - A test file stays within about 300 lines, split by topic
   (`<name>.<topic>.test.ts`), so one commit can carry a change and its test.
+
+## Accounts and state
+
+- **One label is one linked device.** The tools join a Signal account the
+  way Signal Desktop does, as a linked device of the user's phone, through
+  [signal-cli](https://github.com/AsamK/signal-cli); they never read another
+  client's data. Linking is a person's step (a QR code scanned on the phone),
+  and it names the label the device is known by.
+- **A label is 1 to 24 lowercase letters, digits and `_`**, starting and
+  ending with a letter or a digit; linking names it `default` when no label
+  is given. A label is also a directory name, so the set is kept to what every
+  file system takes as it is.
+- **Each label keeps all of its state in one directory**,
+  `<state root>/<label>/`, created with mode 700: signal-cli's data and keys,
+  the daemon's socket, the mirror, and the short-lived copies of files being
+  sent. The state root is the `state_dir` setting, by default
+  `$XDG_STATE_HOME/signal-tools`, or `~/.local/state/signal-tools` without
+  it. One directory per label means a label is moved, backed up or removed as
+  a whole, and nothing of one account sits in another's.
+- **`account` picks the label.** Left out, it picks the only linked label;
+  with several, the call fails as `invalid_argument` and lists them. One
+  account is the common case and needs no argument, while several never
+  depend on which one a tool guesses.
+- **A label reaches only its own account.** A chat id is looked up only in
+  that label's mirror, and a call to Signal goes only through that label's
+  daemon, so no argument can carry a call to an account the label does not
+  name.
+- **The keys never leave the state directory.** Nothing from signal-cli's
+  data reaches a result, an error or a log, and no tool reads or writes the
+  state directory except through the mirror, the daemon client and the
+  outbox. The keys stand for the account itself: whoever holds them reads and
+  sends as the user, on every device.
+
+## The daemon client
+
+- **Every call to signal-cli goes through one client**, as every program goes
+  through one runner: JSON-RPC 2.0 on the label's UNIX socket, a time limit
+  with cancellation, signal-cli's error codes mapped to the codes above, and
+  nothing but the label's own socket reached. A tool never opens the socket
+  itself.
+- **A call's success is not a send's success.** signal-cli answers a send
+  that failed for some recipients as a successful call, with a result per
+  recipient (an untrusted safety number, a rate limit); the client reads every
+  one, so a failure is never reported as a delivery.
+
+## The sync service
+
+- **The sync service alone receives.** One service per label runs that
+  label's daemon as its child with `--receive-mode manual`, subscribes, and
+  writes every message to the mirror. With manual receiving nothing is
+  fetched before the service subscribes, so while it is down messages wait on
+  Signal's server instead of being taken by whichever call comes first.
+- **The service and its daemon always stop together.** signal-cli confirms a
+  message to Signal's server before it hands it on, and does not hand it on
+  again; a daemon that outlived its service would take messages the mirror
+  never sees. A mirror that cannot be written stops receiving at once, for
+  the same reason.
+- **An unlinked device stops the service.** With no linked device, or once
+  Signal has unlinked it (removed on the phone, or unused for 45 days), the
+  service exits and stays down until the device is linked again, rather than
+  restarting against an account it can no longer reach.
+- **The service sends no read receipts or typing indicators of its own**, so
+  the phone keeps its notifications and nobody learns that a message was read
+  by a tool.
+
+## The mirror
+
+- **History starts at the link.** signal-cli receives no history when a
+  device is linked, so nothing older can be read, and the skills say so.
+- **A message is its author and its sent time** in milliseconds, the pair
+  Signal itself uses to quote, react to, edit and delete a message; the id a
+  tool takes or returns carries both, since two members of a group can send
+  in the same millisecond. A chat is a person's account id (a UUID) or `group:<id>`. Names
+  and numbers are never accepted as a chat: anyone can choose any name, and a
+  number tells nothing of the account behind it until Signal is asked, which
+  is the number check's job.
+- **The mirror keeps what Signal shows the user.** Messages they receive, and
+  messages they send from other devices (Note to Self included); a send
+  through the tools is recorded once Signal accepts it, since signal-cli does
+  not report its own sends back. An edit keeps every earlier version. Delete
+  for everyone removes the message, its files, its earlier versions, its
+  reactions and every quote of it, as its sender meant. A mention reads as
+  `@name`.
+- **Disappearing and view-once messages are kept and marked.** A read says
+  when one disappears, or that it has: its sender meant it not to be kept, so
+  a tool returns it for the user only. The marks and the note that such a
+  message is not to be quoted or passed on unless the user asks are fields of
+  their own; the text stays as it was sent.
+- **Every read opens the mirror read-only and needs no daemon**, so reading
+  works while the service is down and can never change what was received.
+- **Other people's words are data.** Message text, names, captions and file
+  names are written by other people; every read tool's description and the
+  skills say so, and nothing a message says is followed as an instruction.
+
+## Files
+
+- **Files go in and out only through the directories a setting names**,
+  judged by real path, so a link that leads elsewhere counts as elsewhere.
+  The state directory and the tools' own install directory are never among
+  them. Which settings, and their defaults, are settled with the tools that
+  save and send files.
+
+## Writes
+
+- **A write's arguments are the whole change**: the chat by id, the text as
+  it should arrive (surrounding blank space trimmed), the files by path.
+  Nothing is chosen at run time from the current state. The harness shows the
+  arguments when it asks, so what it shows is what goes out.
+- **A send's outcome is never guessed.** A result means Signal accepted the
+  message: for a group, per member, with the members it did not reach listed,
+  since what reached some members cannot be taken back by throwing. A failure
+  known to happen before anything reached anyone (the daemon not running,
+  arguments Signal refuses, a recipient not on Signal, a changed safety
+  number, a rate limit) throws its code. Every other failure throws
+  `uncertain`: the message may have gone out, the mirror cannot tell, and it
+  is checked on the phone before any second send. A resend that guessed wrong
+  reaches the other person twice.
+
+## Toolsets
+
+- **One per domain**: `account`, `chats`, `contacts`, `files`, `sends`, and
+  `actions` for what the user does to messages beyond sending them.
+- **`account`, `chats`, `contacts` and `sends` are on by default.** They cover
+  reading a chat and answering it. Saving received files writes to disk and
+  opens archives, and the actions change messages other people have already
+  read, so each is one setting away.

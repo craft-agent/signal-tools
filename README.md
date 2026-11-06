@@ -191,6 +191,7 @@ variable, and an option or setting wins over the variable too.
 | `tools`         | `--tools`         | `SIGNAL_TOOLS_TOOLS`         | single tools to add by ID, whatever their toolset                             |
 | `exclude_tools` | `--exclude-tools` | `SIGNAL_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                |
 | `confirm`       | `--confirm`       | `SIGNAL_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say |
+| `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | where every label's state lives; default `$XDG_STATE_HOME/signal-tools`       |
 
 Lists are comma-separated in a flag or a variable. Where each harness reads them:
 
@@ -215,6 +216,30 @@ Lists are comma-separated in a flag or a variable. Where each harness reads them
   variables have no effect there. To change settings in Codex, add the server
   under `[mcp_servers]` in Codex's config with flags in `args` (as in
   [Any other MCP host](#any-other-mcp-host)) instead of using the plugin.
+
+### Accounts and the sync service
+
+The tools use a Signal account as a linked device of the user's phone, the
+way Signal Desktop does, through [signal-cli](https://github.com/AsamK/signal-cli),
+which you install yourself. They never read another client's data.
+
+- **Each linked device has a label**, 1 to 24 lowercase letters, digits and
+  `_` (`default` when linking names none). A tool's `account` argument picks
+  the label; leave it out when only one device is linked.
+- **Each label keeps its state in one directory**, `<state_dir>/<label>/`
+  (mode 700): signal-cli's data and keys, the daemon's socket, the mirror of
+  received messages, and the copies of files being sent. `state_dir` defaults
+  to `$XDG_STATE_HOME/signal-tools`, or `~/.local/state/signal-tools`. Keep it
+  out of backups you share: the keys read and send as you.
+- **A sync service receives for each label** and keeps its mirror, and the
+  read tools read only the mirror. History starts when the device is linked;
+  messages that arrive while the service is down wait on Signal's server, for
+  as long as Signal keeps undelivered messages.
+- **Signal unlinks a device unused for 45 days**, and every linked device
+  when the phone has been offline for 30; a running service keeps the device
+  in use. An unlinked label is linked again from the phone.
+- **signal-cli releases age out.** A release more than about three months old
+  may stop working with Signal's servers, so keep it updated.
 
 ## Layout
 
