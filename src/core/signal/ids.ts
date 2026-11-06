@@ -24,6 +24,25 @@ export function isGroupChat(chat: string): boolean {
   return chat.startsWith(GROUP_PREFIX)
 }
 
+/** A message's sent time as its id writes it: a positive whole number of milliseconds, up to 16 digits. */
+const MESSAGE_TIME_PATTERN = /^[1-9][0-9]{0,15}$/
+
+/** The id of a message: its author's account id and its sent time in milliseconds, `<uuid>:<ms>`. */
+export function messageId(author: string, ts: number): string {
+  return `${author}:${ts}`
+}
+
+/** The author and sent time in a message id, or null when `text` is not one (the account id must be lowercase). */
+export function parseMessageId(text: string): { author: string; ts: number } | null {
+  if (typeof text !== "string") return null
+  const parts = text.split(":")
+  const [author, time] = parts
+  if (parts.length !== 2 || author === undefined || time === undefined) return null
+  if (!UUID_PATTERN.test(author) || !MESSAGE_TIME_PATTERN.test(time)) return null
+  const ts = Number(time)
+  return Number.isSafeInteger(ts) ? { author, ts } : null
+}
+
 /** Whether `text` is a chat id: a person's account id (lowercase) or `group:<group id>`. Names and numbers are not. */
 export function isChatId(text: string): boolean {
   if (typeof text !== "string") return false
