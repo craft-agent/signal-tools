@@ -195,8 +195,8 @@ variable, and an option or setting wins over the variable too.
 
 Lists are comma-separated in a flag or a variable. Where each harness reads them:
 
-- **OpenCode** takes the plugin `options` shown above, with lists as arrays and
-  `read_only` as a boolean.
+- **OpenCode** takes the plugin `options` shown above, with lists as arrays,
+  `read_only` as a boolean and `state_dir` as a path.
 - **Hermes** takes `plugins.entries.signal-tools.settings` in
   `config.yaml`:
 
