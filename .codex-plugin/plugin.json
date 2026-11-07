@@ -1,0 +1,30 @@
+{
+  "name": "signal-tools",
+  "version": "0.1.1",
+  "description": "Signal tools for coding agents: chats, messages, contacts, received files and sends.",
+  "author": {
+    "name": "craftsamo",
+    "url": "https://github.com/craft-agent"
+  },
+  "homepage": "https://github.com/craft-agent/signal-tools#readme",
+  "repository": "https://github.com/craft-agent/signal-tools",
+  "license": "MIT",
+  "skills": "./skills",
+  "mcpServers": {
+    "signal-tools": {
+      "command": "node",
+      "args": ["dist/mcp.js"],
+      "cwd": ".",
+      "env_vars": [
+        "SIGNAL_TOOLS_TOOLSETS",
+        "SIGNAL_TOOLS_READ_ONLY",
+        "SIGNAL_TOOLS_TOOLS",
+        "SIGNAL_TOOLS_EXCLUDE_TOOLS",
+        "SIGNAL_TOOLS_CONFIRM",
+        "SIGNAL_TOOLS_STATE_DIR",
+        "SIGNAL_TOOLS_DOWNLOAD_DIR",
+        "SIGNAL_TOOLS_SEND_DIRS"
+      ]
+    }
+  }
+}
