@@ -173,15 +173,21 @@ Hermes.
 | Tool               | What it does                                                       | Class |
 | ------------------ | ------------------------------------------------------------------ | ----- |
 | `signal_file_save` | saves one message's files, and unpacks its archives when asked for | add   |
+| `signal_file_send` | sends 1 to 10 files (100 MiB together), with a caption, to a chat  | add   |
 
-The toolset is off by default: it writes to disk and opens archives. Turn it on
-with `toolsets` or `tools`. Files go to the `download_dir` setting, in a folder
+The toolset is off by default: it writes to disk, opens archives and sends
+files. Turn it on with `toolsets` or `tools`. Files are sent only from the
+working directory (not when that is the home directory or a file system root)
+and the directories the `send_dirs` setting names; keys, secrets, programs and
+installers are refused, archives are checked entry by entry, and a file's
+`sha256` can be given to be sure the file sent is the one approved. Sending
+needs the sync service running. Received files go to the `download_dir` setting, in a folder
 per message, private to the user (mode 700 and 600) and never executable;
 nothing is overwritten. Programs and installers are never saved, and an archive
 (zip, tar, gzipped tar) is saved only after its contents pass inspection, then
 listed; `unpack: true` unpacks it into `<name>.unpacked/` beside it. A
 view-once message's files are not saved. On macOS every saved file carries the
-quarantine flag. It needs no daemon. The skill is
+quarantine flag. Saving needs no daemon. The skill is
 [`signal-files`](skills/signal-files/SKILL.md), shown as
 `signal-tools:signal-files` in Claude Code and `signal-tools:files` in Hermes.
 
