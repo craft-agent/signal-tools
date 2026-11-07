@@ -232,15 +232,17 @@ variable, and an option or setting wins over the variable too.
 | `exclude_tools` | `--exclude-tools` | `SIGNAL_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                |
 | `confirm`       | `--confirm`       | `SIGNAL_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say |
 | `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | where every label's state lives; default `$XDG_STATE_HOME/signal-tools`       |
+| `download_dir`  | `--download-dir`  | `SIGNAL_TOOLS_DOWNLOAD_DIR`  | where received files are saved; default `~/Downloads/signal-tools`            |
 
 Lists are comma-separated in a flag or a variable. Where each harness reads them:
 
 - **OpenCode** takes the plugin `options` shown above, with lists as arrays,
-  `read_only` as a boolean and `state_dir` as a path, and falls back to the
-  variables. V2 runs plugins in its background service, which keeps the
-  environment it started with: a variable set where `opencode run` starts has
-  no effect until the service is restarted in that environment
-  (`opencode service restart`). V1 runs plugins in its own process.
+  `read_only` as a boolean and `state_dir` and `download_dir` as paths, and
+  falls back to the variables. V2 runs plugins in its background service,
+  which keeps the environment it started with: a variable set where
+  `opencode run` starts has no effect until the service is restarted in that
+  environment (`opencode service restart`). V1 runs plugins in its own
+  process.
 - **Hermes** takes `plugins.entries.signal-tools.settings` in
   `config.yaml`:
 

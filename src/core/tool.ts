@@ -7,6 +7,7 @@ export type Toolsets = { names: readonly string[]; defaults: readonly string[] }
 /** How far a tool's effect reaches; `docs/conventions.md` defines each class and its annotations. */
 export type WriteClass = "read" | "add" | "idempotent" | "overwrite" | "administrative"
 
+/** What the tool asks the person to confirm. */
 export type ConfirmRequest = { tool: string; message: string }
 
 export type ToolContext = {
@@ -16,6 +17,8 @@ export type ToolContext = {
   ownDir?: string
   /** Where every account's state lives: an absolute path the entry point resolved from its settings. */
   stateDir?: string
+  /** Where received files are saved: an absolute path the entry point resolved from its settings. */
+  downloadDir?: string
   signal?: AbortSignal
   /** Asks the person to approve; absent when the harness's own approval already covers the call. */
   confirm?(request: ConfirmRequest): Promise<boolean>
@@ -66,6 +69,7 @@ export function defineTool<I extends z.ZodObject<any>, O extends z.ZodObject<any
   return spec
 }
 
+/** The MCP annotations of a tool. */
 export type ToolAnnotations = {
   title: string
   readOnlyHint: boolean
