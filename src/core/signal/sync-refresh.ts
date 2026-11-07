@@ -1,4 +1,4 @@
-import type { DaemonConnection } from "./daemon"
+import { callDaemon } from "./daemon"
 import { upsertContacts, upsertGroups } from "./directory"
 import { GROUPS_STALE_META, REFRESHED_AT_META } from "./mirror-meta"
 import { inTransaction, setMeta, type Mirror } from "./mirror"
@@ -6,7 +6,8 @@ import { RPC_TIMEOUT_MS } from "./sync-options"
 import { errorText } from "./sync-status"
 
 export type RefreshContext = {
-  connection: DaemonConnection
+  /** The label's daemon socket; each call opens a connection of its own, never the one that receives. */
+  socketPath: string
   mirror: Mirror
   now(): number
   log(line: string): void
@@ -18,17 +19,20 @@ export type RefreshContext = {
 
 /**
  * Reads the contacts and groups from the daemon and stores them, with the
- * time, in one transaction. A daemon that does not answer is logged and
- * left for the next round; only a mirror that cannot be written throws.
+ * time, in one transaction. Each call goes over a short connection of its
+ * own: a write on the receiving connection to a daemon that has just exited
+ * would make the runtime drop what the daemon sent and was not read yet. A
+ * daemon that does not answer, or cannot be reached, is logged and left for
+ * the next round; only a mirror that cannot be written throws.
  */
 export async function refreshDirectory(context: RefreshContext): Promise<void> {
-  const { connection, mirror, now, log, signal, groupsUnchanged } = context
+  const { socketPath, mirror, now, log, signal, groupsUnchanged } = context
   let contacts: unknown
   let groups: unknown
   try {
     const options = { timeoutMs: RPC_TIMEOUT_MS, signal }
-    contacts = await connection.call("listContacts", { allRecipients: true }, options)
-    groups = await connection.call("listGroups", { detailed: true }, options)
+    contacts = await callDaemon(socketPath, "listContacts", { allRecipients: true }, options)
+    groups = await callDaemon(socketPath, "listGroups", { detailed: true }, options)
   } catch (error) {
     if (!signal.aborted) log(`refresh failed: ${errorText(error)}`)
     return
