@@ -120,6 +120,28 @@ describe("target", () => {
     expect(seenDownloadDir).toBe("/env/downloads")
   })
 
+  test("accepts --send-dirs and passes sendDirs into context for targets", async () => {
+    let seenSendDirs: readonly string[] | undefined
+    const checkTool = {
+      ...specs[1]!,
+      id: "demo_target_send",
+      async targets(_args: unknown, ctx: { sendDirs?: readonly string[] }) {
+        seenSendDirs = ctx.sendDirs
+        return [...(ctx.sendDirs ?? [])]
+      },
+    }
+    const run = await cli(["target", "demo_target_send", "--cwd", "/x", "--send-dirs", "/flag/a,/flag/b"], "", {
+      specs: [checkTool as any],
+    })
+    expect(json(run)).toEqual({ resources: ["/flag/a", "/flag/b"] })
+
+    await cli(["target", "demo_target_send", "--cwd", "/x"], "", {
+      specs: [checkTool as any],
+      env: { DEMO_SEND_DIRS: "/env/a" },
+    })
+    expect(seenSendDirs).toEqual(["/env/a"])
+  })
+
   test("refuses a settings flag that is not a directory", async () => {
     const run = await cli(["target", ADD_ID, "--cwd", "/x", "--read-only"])
     expect(run.code).not.toBe(EXIT_OK)
