@@ -75,6 +75,7 @@ describe("labelPaths", () => {
     expect(paths.label).toBe("work")
     expect(paths.dir).toBe(join(stateDir, "work"))
     expect(paths.signalCli).toBe(join(stateDir, "work", "signal-cli"))
+    expect(paths.attachments).toBe(join(stateDir, "work", "signal-cli", "attachments"))
     expect(paths.socket).toBe(join(stateDir, "work", "daemon.sock"))
     expect(paths.mirror).toBe(join(stateDir, "work", "mirror.sqlite"))
     expect(paths.outbox).toBe(join(stateDir, "work", "outbox"))
