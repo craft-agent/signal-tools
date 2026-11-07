@@ -153,6 +153,8 @@ Every entry point takes the same settings:
   the question to the harness, whose approval every user already knows.
 - **`state_dir`**: where every account's state lives (see "Accounts and state").
 - **`download_dir`**: where received files are saved (see "Files").
+- **`send_dirs`**: the directories files may be sent from, besides the
+  working directory (see "Files").
 
 ## The core contract
 
@@ -336,6 +338,25 @@ Every entry point takes the same settings:
 - **On macOS every saved file carries the quarantine flag**, so the system
   checks it before anything opens it as an app; elsewhere nothing stands for
   it.
+- **A file is sent only from the working directory or `send_dirs`.** The
+  working directory is where the user pointed the agent, so "send this log"
+  needs no setting; it does not count when it is the home directory or a file
+  system root, which would open everything the user owns.
+- **Keys, secrets and programs never leave.** A file is refused for a key or
+  settings folder anywhere in its real path (`.ssh`, `.gnupg`, `.aws`,
+  `.config`, `.git`, …), a name that looks like a key or a secret (`.env`,
+  `id_rsa`, `*.pem`, `*secret*`, …), a private key block anywhere in it, or
+  being a program or an installer; an empty file and the same file twice are
+  refused too. Source code is sent when its bytes are text. A name is a weak
+  sign, so it never stands alone: the bytes are read as well.
+- **An archive is sent only once every entry passes the same rules**, read
+  entry by entry and never unpacked, within the limits of an inspection.
+- **What is sent is the copy that was checked.** Each file is copied into
+  the label's outbox, private, and checked there; signal-cli sends that copy,
+  and the outbox is removed after the call, so a file that changes meanwhile
+  never goes out unchecked. A `sha256` given with a file must match the copy,
+  or the call is `stale`: the harness shows only a path when it asks.
+- **A send carries at most 10 files and 100 MiB**, what Signal itself takes.
 
 ## Writes
 
