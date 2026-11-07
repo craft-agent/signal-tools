@@ -168,6 +168,23 @@ Neither writes the mirror. The skill is
 `signal-tools:signal-contacts` in Claude Code and `signal-tools:contacts` in
 Hermes.
 
+### Files (`files`)
+
+| Tool               | What it does                                                       | Class |
+| ------------------ | ------------------------------------------------------------------ | ----- |
+| `signal_file_save` | saves one message's files, and unpacks its archives when asked for | add   |
+
+The toolset is off by default: it writes to disk and opens archives. Turn it on
+with `toolsets` or `tools`. Files go to the `download_dir` setting, in a folder
+per message, private to the user (mode 700 and 600) and never executable;
+nothing is overwritten. Programs and installers are never saved, and an archive
+(zip, tar, gzipped tar) is saved only after its contents pass inspection, then
+listed; `unpack: true` unpacks it into `<name>.unpacked/` beside it. A
+view-once message's files are not saved. On macOS every saved file carries the
+quarantine flag. It needs no daemon. The skill is
+[`signal-files`](skills/signal-files/SKILL.md), shown as
+`signal-tools:signal-files` in Claude Code and `signal-tools:files` in Hermes.
+
 > > > > > > > eb4147b (docs: add the contacts skill and list the contact tool)
 
 ## Adding a tool
