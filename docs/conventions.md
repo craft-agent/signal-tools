@@ -283,6 +283,9 @@ Every entry point takes the same settings:
   their own; the text stays as it was sent.
 - **Every read opens the mirror read-only and needs no daemon**, so reading
   works while the service is down and can never change what was received.
+  The exception is the number check: a number tells nothing of the account
+  behind it until Signal is asked, so it asks through the label's daemon and
+  needs the running sync service. It still writes nothing to the mirror.
   Read-only means every write refused (`query_only`), never migrating, and
   never creating the mirror; the connection itself is SQLite's ordinary one,
   since a read-only connection cannot open a WAL database once its `-shm`

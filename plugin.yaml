@@ -6,6 +6,7 @@ requires_hermes: ">=0.22"
 provides_tools:
   - signal_account_read
   - signal_chat_read
+  - signal_contact_read
 provides_hooks:
   - pre_tool_call
 config_schema:

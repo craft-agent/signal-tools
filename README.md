@@ -156,6 +156,20 @@ written by other people. The skill is
 [`signal-chats`](skills/signal-chats/SKILL.md), shown as
 `signal-tools:signal-chats` in Claude Code and `signal-tools:chats` in Hermes.
 
+### Contacts (`contacts`)
+
+| Tool                  | What it does                                                   | Class |
+| --------------------- | -------------------------------------------------------------- | ----- |
+| `signal_contact_read` | lists local contacts or checks up to three numbers with Signal | read  |
+
+Listing needs no daemon; checking numbers needs the running sync service.
+Neither writes the mirror. The skill is
+[`signal-contacts`](skills/signal-contacts/SKILL.md), shown as
+`signal-tools:signal-contacts` in Claude Code and `signal-tools:contacts` in
+Hermes.
+
+> > > > > > > eb4147b (docs: add the contacts skill and list the contact tool)
+
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID

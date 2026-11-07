@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { callDaemon, DaemonConnection } from "./daemon"
+import { ToolError } from "../errors"
+import { callDaemon, DaemonConnection, isDaemonNotRunning } from "./daemon"
 import { failureOf, startFakeDaemon, type FakeDaemon, type FakeReply } from "./daemon.testing"
 
 const SHORT_MS = 200
@@ -29,7 +30,13 @@ describe("a daemon that is not there", () => {
     const error = await failureOf(callDaemon(path, "version"))
     expect(error).toMatchObject({ code: "upstream_error" })
     expect(error.message).toBe("The Signal daemon is not running at this account's socket.")
+    expect(isDaemonNotRunning(error)).toBe(true)
     expect(error.message).not.toContain("sig-missing-dir")
+  })
+
+  test("does not identify another upstream_error by its message", () => {
+    const error = new ToolError("upstream_error", "The Signal daemon is not running at this account's socket.")
+    expect(isDaemonNotRunning(error)).toBe(false)
   })
 
   test("is the same for a write: nothing was sent", async () => {

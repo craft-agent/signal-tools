@@ -45,7 +45,9 @@ tagged `v<version>`; consumers pin a tag or the same npm version.
   confirms a message to Signal before handing it on, so a second receiver, or
   a daemon left running without the service, loses messages silently.
 - **Reads open the mirror read-only.** No read writes the mirror or needs the
-  daemon.
+  daemon, except the number check, which asks Signal through the label's daemon
+  and needs the running sync service: a number tells nothing of the account
+  behind it until Signal is asked. It still writes nothing to the mirror.
 - **The keys never leave the state directory.** Nothing from signal-cli's data
   reaches a result, an error or a log; tests use made-up accounts and numbers
   only.
