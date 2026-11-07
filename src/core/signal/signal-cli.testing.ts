@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process"
 import { chmodSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -14,6 +15,7 @@ export type FakeMode =
   | "lines"
   | "daemon-ok"
   | "daemon-exit-after-envelopes"
+  | "daemon-exit-after-pause"
   | "daemon-ignore-term"
   | "daemon-no-socket"
   | "daemon-unlinked"
@@ -118,6 +120,16 @@ export function writeSignalCliAccount(
   const index = { accounts: [{ path: file, environment: "LIVE", number, uuid }], version: 2 }
   writeFileSync(join(dataDir, "accounts.json"), JSON.stringify(index))
   writeFileSync(join(dataDir, file), JSON.stringify({ number, ...(registered === null ? {} : { registered }) }))
+}
+
+/**
+ * Whether the process has ended, a zombie its parent has not collected yet
+ * included, which `isRunning` still counts as running. Blocks for the check.
+ */
+export function hasExited(pid: number): boolean {
+  const { stdout } = spawnSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" })
+  const state = stdout.trim()
+  return state === "" || state.startsWith("Z")
 }
 
 /** Whether a process with this id is still running. */

@@ -3,8 +3,11 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { openMirrorForRead } from "./mirror"
 import { ALICE, NOW, NUMBER, columnOf, dataFrom } from "./mirror.testing"
-import { LINKED_ACCOUNT, writeSignalCliAccount } from "./signal-cli.testing"
+import { LINKED_ACCOUNT, hasExited, writeSignalCliAccount } from "./signal-cli.testing"
 import { allGone, eventually, syncFixture, type SyncFixture } from "./sync.testing"
+
+/** The longest a test keeps the service busy while it waits for the daemon to exit. */
+const BUSY_LIMIT_MS = 5_000
 
 let fixture: SyncFixture
 
@@ -27,6 +30,26 @@ describe("runSync when the daemon goes away", () => {
     expect(existsSync(fixture.paths.socket)).toBe(false)
     expect(existsSync(fixture.paths.daemonPid)).toBe(false)
     expect(fixture.logs.at(-1)).toBe("sync ended: signal-cli exited (code 3)")
+  })
+
+  test("a daemon that exits while the service is busy still has its envelopes stored", async () => {
+    fixture = syncFixture("daemon-exit-after-pause")
+    const texts = ["one", "two", "three"]
+    fixture.serve({ payloads: texts.map((message, index) => dataFrom(ALICE, NOW + index + 1, { message })) })
+    // Busy between the subscription and the first refresh, until the daemon is gone with its envelopes unread.
+    const log = (line: string) => {
+      fixture.logs.push(line)
+      if (line !== "subscribed") return
+      const deadline = Date.now() + BUSY_LIMIT_MS
+      while (!hasExited(fixture.pids()[0]!) && Date.now() < deadline);
+    }
+
+    const outcome = await fixture.run({ log })
+
+    expect(outcome).toEqual({ exitCode: 1, status: "failed", reason: "signal-cli exited (code 3)" })
+    const mirror = openMirrorForRead(fixture.paths.mirror)
+    expect(columnOf(mirror, "SELECT body FROM messages ORDER BY ts")).toEqual(texts)
+    mirror.close()
   })
 
   test("a daemon that is killed fails with the signal that ended it", async () => {

@@ -111,11 +111,12 @@ async function receive(run: Run, session: Session, daemon: Daemon, connection: D
     )
     log("subscribed")
 
+    // `connection` is never written to again: see "The sync service" in docs/conventions.md.
     while (!ending.settled) {
       wakeup.clear()
       await receiver.guard(() =>
         refreshDirectory({
-          connection,
+          socketPath: paths.socket,
           mirror,
           now,
           log,

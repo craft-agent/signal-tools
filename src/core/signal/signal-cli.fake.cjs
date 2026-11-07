@@ -51,6 +51,7 @@ function hang() {
 }
 
 const EXIT_AFTER_ENVELOPES = 3
+const PAUSE_BEFORE_ENVELOPES_MS = 50
 const NOT_REGISTERED = "ERROR Not registered: "
 
 /** What the daemon modes serve, from `daemon.json` beside this file: { payloads, contacts, groups, later: { afterMs, payloads } }. */
@@ -67,9 +68,10 @@ function readDaemonFixture() {
  * `subscribeReceive` (0, then each fixture payload as a `receive` notification),
  * `listContacts` and `listGroups`, and records every request in `rpc.jsonl`.
  * `ignoreTerm` keeps it running on SIGTERM; `exitAfterEnvelopes` makes it exit with
- * code 3 right after it wrote the notifications.
+ * code 3 right after it wrote the notifications; `envelopesAfterMs` holds them back
+ * that long after the answer, so the answer reaches the client on its own.
  */
-function serveDaemon({ ignoreTerm = false, exitAfterEnvelopes = false } = {}) {
+function serveDaemon({ ignoreTerm = false, exitAfterEnvelopes = false, envelopesAfterMs = 0 } = {}) {
   const net = require("node:net")
   const socketPath = args[args.indexOf("--socket") + 1]
   const fixture = readDaemonFixture()
@@ -82,11 +84,15 @@ function serveDaemon({ ignoreTerm = false, exitAfterEnvelopes = false } = {}) {
   const subscribe = (client, id) => {
     write(client, { id, result: 0 })
     const payloads = fixture.payloads || []
-    payloads.forEach((payload, index) => {
-      const last = index === payloads.length - 1
-      notify(client, payload, exitAfterEnvelopes && last ? () => process.exit(EXIT_AFTER_ENVELOPES) : undefined)
-    })
-    if (exitAfterEnvelopes && payloads.length === 0) process.exit(EXIT_AFTER_ENVELOPES)
+    const emit = () => {
+      payloads.forEach((payload, index) => {
+        const last = index === payloads.length - 1
+        notify(client, payload, exitAfterEnvelopes && last ? () => process.exit(EXIT_AFTER_ENVELOPES) : undefined)
+      })
+      if (exitAfterEnvelopes && payloads.length === 0) process.exit(EXIT_AFTER_ENVELOPES)
+    }
+    if (envelopesAfterMs > 0) setTimeout(emit, envelopesAfterMs)
+    else emit()
     if (fixture.later) {
       setTimeout(() => fixture.later.payloads.forEach((payload) => notify(client, payload)), fixture.later.afterMs)
     }
@@ -142,6 +148,8 @@ const MODES = {
   },
   "daemon-ok": () => serveDaemon(),
   "daemon-exit-after-envelopes": () => serveDaemon({ exitAfterEnvelopes: true }),
+  "daemon-exit-after-pause": () =>
+    serveDaemon({ exitAfterEnvelopes: true, envelopesAfterMs: PAUSE_BEFORE_ENVELOPES_MS }),
   "daemon-ignore-term": () => serveDaemon({ ignoreTerm: true }),
   "daemon-no-socket": () => {
     process.stderr.write("INFO Starting, the socket will not open\n")

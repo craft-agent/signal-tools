@@ -248,6 +248,11 @@ Every entry point takes the same settings:
   writes every message to the mirror. With manual receiving nothing is
   fetched before the service subscribes, so while it is down messages wait on
   Signal's server instead of being taken by whichever call comes first.
+- **The receiving connection never writes once subscribed.** It carries only
+  `subscribeReceive`; every other call, the contacts and groups refresh
+  included, goes over a connection of its own. A write to a daemon that has
+  just exited fails, and the runtime then discards what the daemon had sent but
+  the service had not read yet: messages signal-cli had already handed on.
 - **The service and its daemon always stop together.** signal-cli confirms a
   message to Signal's server before it hands it on, and does not hand it on
   again; a daemon that outlived its service would take messages the mirror
