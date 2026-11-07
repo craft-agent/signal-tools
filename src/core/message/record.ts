@@ -34,12 +34,25 @@ export function recordInMirror<T>(
   }
 }
 
+/**
+ * A file a send carried, as signal-cli lists an attachment of a sent
+ * transcript. The id signal-cli stores a received file under is not here: the
+ * file was sent from a path, and the mirror holds no copy of it to save.
+ */
+export type SentAttachment = { contentType: string; filename: string; size: number }
+
 /** What the sync service would store for this message, were it sent from another device: a data message of a sent transcript. */
-function sentTranscript(prepared: PreparedSend, text: string, timestamp: number): Record<string, unknown> {
+function sentTranscript(
+  prepared: PreparedSend,
+  text: string,
+  timestamp: number,
+  attachments: readonly SentAttachment[],
+): Record<string, unknown> {
   const { chat, quote } = prepared
   return {
     timestamp,
     message: text,
+    ...(attachments.length > 0 ? { attachments } : {}),
     expiresInSeconds: chat.expires_in ?? 0,
     ...(quote
       ? {
@@ -60,12 +73,18 @@ function sentTranscript(prepared: PreparedSend, text: string, timestamp: number)
  * by `storeMessage`. Any failure throws a `ToolError` that says the message
  * was sent but is not in the mirror yet.
  */
-export function recordSent(paths: LabelPaths, prepared: PreparedSend, text: string, timestamp: number): void {
+export function recordSent(
+  paths: LabelPaths,
+  prepared: PreparedSend,
+  text: string,
+  timestamp: number,
+  attachments: readonly SentAttachment[] = [],
+): void {
   const { chat, me } = prepared
   recordInMirror(paths, me, NOT_RECORDED, (mirror, ctx) => {
     const sender: Sender = { chat: chat.id, author: me, fromMe: true, authorName: null }
     const stored = inTransaction(mirror, () =>
-      storeMessage(mirror, ctx, sender, sentTranscript(prepared, text, timestamp)),
+      storeMessage(mirror, ctx, sender, sentTranscript(prepared, text, timestamp, attachments)),
     )
     if (stored !== "message") throw new ToolError("internal_error", "The mirror did not keep the message")
   })
