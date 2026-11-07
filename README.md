@@ -185,8 +185,6 @@ quarantine flag. It needs no daemon. The skill is
 [`signal-files`](skills/signal-files/SKILL.md), shown as
 `signal-tools:signal-files` in Claude Code and `signal-tools:files` in Hermes.
 
-> > > > > > > eb4147b (docs: add the contacts skill and list the contact tool)
-
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID
