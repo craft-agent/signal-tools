@@ -3,7 +3,7 @@ import { foldCase } from "../fold"
 import { clampLimit, encodeCursor, fitItems, notACursor, readCursor, type Cuttable } from "../pages"
 import type { Mirror } from "../signal/mirror"
 import { formatLocalTime } from "../time"
-import { CHAT_COLUMNS, chatHeader, chatName, chatNumber, personIds, type StoredChat } from "./chat-rows"
+import { CHAT_COLUMNS, chatHeader, chatName, chatNumber, isLeftGroup, personIds, type StoredChat } from "./chat-rows"
 import { fingerprint } from "./filter"
 import { messageEntries } from "./message"
 import { cutMessage, dropMetadata, messageTextLength } from "./message-cut"
@@ -70,7 +70,7 @@ function entryOf(chat: StoredChat, people: People, unread: number): ChatEntry {
   if (number !== null) entry.number = number
   if (chat.last_ts !== null) entry.last_activity_at = formatLocalTime(chat.last_ts)
   if (chat.expires_in) entry.disappearing_seconds = chat.expires_in
-  if (chat.kind === "group" && !chat.member) entry.left = true
+  if (isLeftGroup(chat)) entry.left = true
   return entry
 }
 
