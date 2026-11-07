@@ -102,7 +102,7 @@ describe("chat read: the size of a result", () => {
       seen.push(...(result.chats ?? []).map((chat) => chat.id))
       cursor = result.next
     } while (cursor)
-    expect(seen).toEqual([...people].reverse())
+    expect(seen).toEqual([...[...people].reverse(), ME])
   })
 
   test("a chat whose last message alone exceeds the budget is cut in the list", async () => {

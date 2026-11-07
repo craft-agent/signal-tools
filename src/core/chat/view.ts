@@ -29,7 +29,7 @@ export function viewChat(
   const range = readRange(args)
   const older = args.cursor === undefined ? undefined : readCursor(args.cursor, "cursor", viewCursor)
   if (older && older.chat !== chatId) throw notACursor("cursor")
-  const chat = existingChat(mirror, chatId)
+  const chat = existingChat(mirror, me, chatId)
 
   const bounds = rangeConditions(range)
   const where = ["chat = ?", ...bounds.conditions]

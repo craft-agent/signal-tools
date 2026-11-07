@@ -79,12 +79,13 @@ describe("chat read: list", () => {
         disappearing_seconds: 60,
         left: true,
       },
+      { id: ME, kind: "person", name: "Note to Self", unread: 0 },
     ])
   })
 
   test("a chat that ties on activity comes after the one with the smaller id", async () => {
     t.ingest(dataFrom(BOB, 7000, { message: "b" }), dataFrom(ALICE, 7000, { message: "a" }))
-    expect(await ids()).toEqual([ALICE, BOB])
+    expect(await ids()).toEqual([ALICE, BOB, ME])
   })
 
   test("names a person by contact name, profile name, username, number, then the last name seen, else null", async () => {
@@ -176,7 +177,7 @@ describe("chat read: list paging and arguments", () => {
   test("paging by cursor carries on across ties on the activity time", async () => {
     const people = [1, 2, 3, 4].map((n) => `00000000-0000-4000-8000-00000000000${n}`)
     t.ingest(...people.map((person) => dataFrom(person, 8000, { message: "x" })))
-    expect(await pages(3)).toEqual([people.slice(0, 3), people.slice(3)])
+    expect(await pages(3)).toEqual([people.slice(0, 3), [...people.slice(3), ME]])
   })
 
   test("a message arriving between pages does not repeat a chat already shown", async () => {
