@@ -352,6 +352,18 @@ Every entry point takes the same settings:
   `uncertain`: the message may have gone out, the mirror cannot tell, and it
   is checked on the phone before any second send. A resend that guessed wrong
   reaches the other person twice.
+- **A text is at most 4,000 characters**, after trimming. signal-cli sends
+  one over 2,000 as a long-text attachment, which phones show behind "Read
+  more"; past 4,000 a message is better split or sent as a file.
+- **A reply names the quoted message by id.** The quote carries that
+  message's author and sent time, which is what Signal points at, and its
+  text as the mirror has it at the time of the send, as Signal's own clients
+  copy it. A message deleted for everyone or expired is not quoted.
+- **A send records itself in the mirror** once Signal accepts it, since
+  signal-cli does not report its own sends back. It writes only that message,
+  never migrates, and leaves a mirror of another version alone. A record that
+  fails does not undo the send: the result says the message went out and
+  names the failure under `errors`.
 
 ## Toolsets
 
