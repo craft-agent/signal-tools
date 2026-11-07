@@ -1,15 +1,41 @@
 import { ToolError } from "../errors"
+import type { IngestContext } from "../signal/ingest-context"
 import { deleteMessage, removeFiles } from "../signal/ingest-delete"
 import { editMessage } from "../signal/ingest-edit"
 import type { Sender } from "../signal/ingest-messages"
 import type { LabelPaths } from "../signal/labels"
-import { inTransaction } from "../signal/mirror"
+import { inTransaction, type Mirror } from "../signal/mirror"
 import type { PreparedChat } from "./prepare"
 import { recordInMirror } from "./record"
 
-const EDIT_NOT_RECORDED = "the edit was sent but is not in the mirror yet"
-const EDIT_DELETED_MEANWHILE = "the edit was sent, but the message has since been deleted for everyone"
 const DELETE_NOT_RECORDED = "the message was deleted for everyone but is still in the mirror"
+
+type RecordAction = "edit" | "reaction"
+
+/** The sender record for actions made by the user from this account. */
+function ownSender(chat: string, author: string): Sender {
+  return { chat, author, fromMe: true, authorName: null }
+}
+
+/**
+ * Records an update (edit or reaction) in the mirror, rolling back on failure
+ * and checking whether the message was deleted for everyone meanwhile.
+ */
+function recordUpdate(
+  paths: LabelPaths,
+  me: string,
+  action: RecordAction,
+  apply: (mirror: Mirror, ctx: IngestContext) => "ok" | "dropped-deleted" | null,
+): void {
+  const outcome = recordInMirror(paths, me, `the ${action} was sent but is not in the mirror yet`, (mirror, ctx) => {
+    const stored = inTransaction(mirror, () => apply(mirror, ctx))
+    if (!stored) throw new ToolError("internal_error", `The mirror did not keep the ${action}`)
+    return stored
+  })
+  if (outcome === "dropped-deleted") {
+    throw new ToolError("upstream_error", `the ${action} was sent, but the message has since been deleted for everyone`)
+  }
+}
 
 /**
  * Records an edit Signal accepted in the label's mirror, as the sync service
@@ -24,16 +50,14 @@ export function recordEdit(
   { chat, me }: PreparedChat,
   edit: { timestamp: number; edited: number; text: string },
 ): void {
-  const outcome = recordInMirror(paths, me, EDIT_NOT_RECORDED, (mirror, ctx) => {
-    const sender: Sender = { chat: chat.id, author: me, fromMe: true, authorName: null }
+  recordUpdate(paths, me, "edit", (mirror, ctx) => {
     const dataMessage = { timestamp: edit.edited, message: edit.text }
-    const stored = inTransaction(mirror, () =>
-      editMessage(mirror, ctx, sender, { targetSentTimestamp: edit.timestamp, dataMessage }),
-    )
-    if (stored === null) throw new ToolError("internal_error", "The mirror did not keep the edit")
-    return stored
+    const stored = editMessage(mirror, ctx, ownSender(chat.id, me), {
+      targetSentTimestamp: edit.timestamp,
+      dataMessage,
+    })
+    return stored === "dropped-deleted" ? "dropped-deleted" : stored === "edit" ? "ok" : null
   })
-  if (outcome === "dropped-deleted") throw new ToolError("upstream_error", EDIT_DELETED_MEANWHILE)
 }
 
 /**
