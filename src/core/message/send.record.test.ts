@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { chmodSync, existsSync, rmSync } from "node:fs"
 import { GROUP } from "../chat/read.testing"
 import { messageId } from "../signal/ids"
-import { ALICE, ME, messageRow, rowsOf, sentTo } from "../signal/mirror.testing"
+import { ALICE, ME, dataFrom, messageRow, rowsOf, sentTo } from "../signal/mirror.testing"
 import { accepted, createSendFixture, SENT, type SendFixture } from "./send.testing"
 
 const NOT_RECORDED = "the message was sent but is not in the mirror yet"
@@ -76,6 +76,21 @@ describe("a send that Signal accepted", () => {
     expect((await t.messages(ALICE)).find((message) => message.id === messageId(ME, SENT))).toMatchObject({
       disappears_after_seconds: 3600,
     })
+  })
+
+  test("takes the timer from the chat's latest ordinary message when no timer update was seen", async () => {
+    t.ingest(dataFrom(ALICE, 5200, { message: "earlier", expiresInSeconds: 3600 }))
+    await t.send({ chat: ALICE, text: "hello" })
+    expect(stored(SENT)).toMatchObject({ expires_in: 3600, expire_start: SENT })
+  })
+
+  test("a timer a later message cleared is not taken", async () => {
+    t.ingest(
+      dataFrom(ALICE, 5200, { message: "earlier", expiresInSeconds: 3600 }),
+      dataFrom(ALICE, 5300, { message: "later", expiresInSeconds: 0 }),
+    )
+    await t.send({ chat: ALICE, text: "hello" })
+    expect(stored(SENT)).toMatchObject({ expires_in: 0, expire_start: null })
   })
 
   test("a group's message is recorded in the group", async () => {

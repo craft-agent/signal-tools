@@ -39,11 +39,28 @@ function hasItems(items: unknown): boolean {
   return Array.isArray(items) && items.length > 0
 }
 
+/** The time of the latest message of `chat`, or null when the mirror has none of it. */
+function latestTs(mirror: Mirror, chat: string): number | null {
+  const row = mirror.prepare("SELECT last_ts FROM chats WHERE id = ?").get(chat) as
+    { last_ts: number | null } | undefined
+  return row?.last_ts ?? null
+}
+
+/** Sets the disappearing-message timer of `chat` to `seconds`. */
+function setChatTimer(mirror: Mirror, chat: string, seconds: number): void {
+  mirror.prepare("UPDATE chats SET expires_in = ? WHERE id = ?").run(seconds, chat)
+}
+
 /**
  * Stores one data message (incoming or a sent transcript). Returns what it
  * was, "dropped-deleted" when it was deleted for everyone before it arrived,
  * or null when there was nothing to keep. `edited` is the time of the edit
  * that this message's text comes from, when its original was never seen.
+ *
+ * A message that carries a timer and is not older than the chat's latest sets
+ * the chat's timer, 0 included, since every message carries the chat's
+ * current one; a message ingested late leaves a newer timer alone, and so
+ * does an edit, which says nothing of the chat's timer at its own time.
  */
 export function storeMessage(
   mirror: Mirror,
@@ -56,10 +73,11 @@ export function storeMessage(
   if (ts === null) return null
   const { chat, author, fromMe, authorName } = sender
   if (isDeleted(mirror, author, ts)) return "dropped-deleted"
-  const expires = intOrNull(data.expiresInSeconds) ?? 0
+  const timer = intOrNull(data.expiresInSeconds)
+  const expires = timer ?? 0
   if (data.isExpirationUpdate) {
     touchChat(mirror, chat, ts, ctx.now)
-    mirror.prepare("UPDATE chats SET expires_in = ? WHERE id = ?").run(expires, chat)
+    setChatTimer(mirror, chat, expires)
     mirror
       .prepare(
         `INSERT OR IGNORE INTO messages (chat, author, ts, from_me, author_name, kind, expires_in, received)
@@ -73,7 +91,9 @@ export function storeMessage(
   const sticker = isRecord(data.sticker)
   const other = OTHER_KINDS.find((kind) => data[kind]) ?? null
   if (!body && attachments.length === 0 && !sticker && !other) return null
+  const latest = latestTs(mirror, chat)
   touchChat(mirror, chat, ts, ctx.now)
+  if (timer !== null && edited === null && (latest === null || ts >= latest)) setChatTimer(mirror, chat, timer)
   mirror
     .prepare(
       `INSERT INTO messages (chat, author, ts, from_me, author_name, body, attachments, quote, sticker, other,
