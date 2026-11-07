@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ensureLabelDir, listLabels } from "../core/signal/labels"
@@ -7,6 +7,7 @@ import type { ServiceHost } from "../core/signal/service"
 import { PROJECT } from "../project"
 import { EXIT_FAILED, EXIT_OK, EXIT_USAGE } from "./command-io"
 import { runRemoveCommand } from "./remove"
+import { SERVICE_ID } from "./service"
 
 function fakeHost(home: string): ServiceHost {
   return {
@@ -79,6 +80,29 @@ describe("CLI remove", () => {
       )
       expect(stderr).toBe("")
       expect(await listLabels(dir)).toEqual([])
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("deletes the service log along with the label", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sig-"))
+    try {
+      await ensureLabelDir(dir, "work")
+      const logDir = join(dir, "Library", "Logs", SERVICE_ID)
+      await mkdir(logDir, { recursive: true })
+      await writeFile(join(logDir, "work.log"), "x")
+
+      const code = await runRemoveCommand(["--account", "work", "--yes", "--state-dir", dir], {
+        env: {},
+        isTTY: false,
+        stdout: () => {},
+        stderr: () => {},
+        serviceHost: fakeHost(dir),
+      })
+
+      expect(code).toBe(EXIT_OK)
+      expect(await stat(logDir).catch(() => undefined)).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

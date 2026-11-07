@@ -1,7 +1,7 @@
 import { isToolError } from "../core"
 import { checkLabel } from "../core/signal/labels"
 import { removeLabel } from "../core/signal/removal"
-import { defaultServiceHost, uninstallService } from "../core/signal/service"
+import { defaultServiceHost, removeServiceLog, uninstallService } from "../core/signal/service"
 import { handleCommandError, parseCommandStateDir, parseFlagArgs, printCommandError, usageError } from "./command-args"
 import { defaultReadLine, EXIT_FAILED, EXIT_OK, EXIT_USAGE, type CommandIo } from "./command-io"
 import { SERVICE_ID } from "./service"
@@ -52,7 +52,9 @@ export async function runRemoveCommand(argv: string[], io: CommandIo): Promise<n
       return EXIT_USAGE
     }
 
-    io.stdout(`This will permanently delete the keys, signal-cli data, and received message history for "${label}".\n`)
+    io.stdout(
+      `This will permanently delete the keys, signal-cli data, received message history, and service log for "${label}".\n`,
+    )
     const prompt = `To confirm, please type the label name "${label}": `
     const readLine = io.readLine ?? defaultReadLine
     const answer = await readLine(prompt)
@@ -79,6 +81,7 @@ export async function runRemoveCommand(argv: string[], io: CommandIo): Promise<n
         }
       },
     })
+    await removeServiceLog(SERVICE_ID, label, host)
 
     io.stdout(
       `Removed "${label}". Also remove this device on the phone (Signal > Settings > Linked devices): a linked device cannot remove itself.\n`,

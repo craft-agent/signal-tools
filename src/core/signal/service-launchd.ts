@@ -1,4 +1,4 @@
-import { chmod, mkdir, stat, unlink, writeFile } from "node:fs/promises"
+import { chmod, lstat, mkdir, rmdir, stat, unlink, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import {
   checkServiceSpecControlChars,
@@ -124,6 +124,30 @@ export async function uninstallLaunchdService(id: string, label: string, host: S
     await unlink(plistPath)
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+  }
+}
+
+/**
+ * Deletes the label's log file, then its directory when nothing else is in it.
+ * Anything at the log path but a regular file is left alone, never followed,
+ * and so is a log directory that is not a directory: the label is gone by
+ * now, so this never fails over what it cannot tidy.
+ */
+export async function removeLaunchdLog(id: string, label: string, host: ServiceHost): Promise<void> {
+  const { logDir, logPath } = launchdPaths(id, label, host.home)
+
+  try {
+    if ((await lstat(logPath)).isFile()) await unlink(logPath)
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code !== "ENOENT" && code !== "ENOTDIR") throw err
+  }
+
+  try {
+    await rmdir(logDir)
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOENT" && code !== "ENOTDIR") throw err
   }
 }
 
