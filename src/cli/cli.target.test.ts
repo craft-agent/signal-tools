@@ -97,4 +97,32 @@ describe("target", () => {
     expect(runEnv.code).toBe(EXIT_OK)
     expect(seenStateDir).toBe("/env/target/state")
   })
+
+  test("accepts --download-dir and passes downloadDir into context for targets", async () => {
+    let seenDownloadDir: string | undefined
+    const checkTool = {
+      ...specs[1]!,
+      id: "demo_target_download",
+      async targets(_args: unknown, ctx: { downloadDir?: string }) {
+        seenDownloadDir = ctx.downloadDir
+        return [ctx.downloadDir ?? "none"]
+      },
+    }
+    const run = await cli(["target", "demo_target_download", "--cwd", "/x", "--download-dir", "/flag/downloads"], "", {
+      specs: [checkTool as any],
+    })
+    expect(json(run)).toEqual({ resources: ["/flag/downloads"] })
+
+    await cli(["target", "demo_target_download", "--cwd", "/x"], "", {
+      specs: [checkTool as any],
+      env: { DEMO_DOWNLOAD_DIR: "/env/downloads" },
+    })
+    expect(seenDownloadDir).toBe("/env/downloads")
+  })
+
+  test("refuses a settings flag that is not a directory", async () => {
+    const run = await cli(["target", ADD_ID, "--cwd", "/x", "--read-only"])
+    expect(run.code).not.toBe(EXIT_OK)
+    expect(run.stderr).toContain("--read-only")
+  })
 })

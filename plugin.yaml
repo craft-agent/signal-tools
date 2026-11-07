@@ -7,6 +7,7 @@ provides_tools:
   - signal_account_read
   - signal_chat_read
   - signal_contact_read
+  - signal_file_save
 provides_hooks:
   - pre_tool_call
 config_schema:
@@ -21,3 +22,5 @@ config_schema:
   exclude_tools:
     type: list
     description: Single tools to remove by id. Wins over tools and toolsets.
+  download_dir:
+    description: Where received files are saved; an absolute path, or one starting with ~. Defaults to ~/Downloads/signal-tools.

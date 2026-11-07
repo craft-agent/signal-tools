@@ -1,6 +1,22 @@
 import { isGroupChat } from "./ids"
 import type { Mirror } from "./mirror"
 
+const MS_PER_SECOND = 1000
+
+/**
+ * The timestamp (in ms since the epoch) when a disappearing message expires;
+ * null when the message has no timer or its timer has not started yet.
+ */
+export function messageDisappearsAt(row: { expires_in: number; expire_start: number | null }): number | null {
+  return row.expires_in > 0 && row.expire_start !== null ? row.expire_start + row.expires_in * MS_PER_SECOND : null
+}
+
+/** Whether a disappearing message's time has passed by `now`. */
+export function hasDisappeared(row: { expires_in: number; expire_start: number | null }, now: number): boolean {
+  const at = messageDisappearsAt(row)
+  return at !== null && at <= now
+}
+
 /** The columns of a stored message that editing, reacting and deleting need. */
 export type MessageRow = {
   chat: string

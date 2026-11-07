@@ -41,6 +41,7 @@ export type LabelPaths = {
   label: string
   dir: string // <stateDir>/<label>
   signalCli: string // <dir>/signal-cli (signal-cli's --config directory: its data and keys)
+  attachments: string // <signalCli>/attachments (where signal-cli stores received files, one file per attachment id)
   socket: string // <dir>/daemon.sock
   mirror: string // <dir>/mirror.sqlite
   outbox: string // <dir>/outbox
@@ -60,10 +61,12 @@ export function labelPaths(stateDir: string, label: string): LabelPaths {
   }
   checkLabel(label)
   const dir = join(stateDir, label)
+  const signalCli = join(dir, "signal-cli")
   const paths: LabelPaths = {
     label,
     dir,
-    signalCli: join(dir, "signal-cli"),
+    signalCli,
+    attachments: join(signalCli, "attachments"),
     socket: join(dir, "daemon.sock"),
     mirror: join(dir, "mirror.sqlite"),
     outbox: join(dir, "outbox"),

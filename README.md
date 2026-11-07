@@ -168,6 +168,23 @@ Neither writes the mirror. The skill is
 `signal-tools:signal-contacts` in Claude Code and `signal-tools:contacts` in
 Hermes.
 
+### Files (`files`)
+
+| Tool               | What it does                                                       | Class |
+| ------------------ | ------------------------------------------------------------------ | ----- |
+| `signal_file_save` | saves one message's files, and unpacks its archives when asked for | add   |
+
+The toolset is off by default: it writes to disk and opens archives. Turn it on
+with `toolsets` or `tools`. Files go to the `download_dir` setting, in a folder
+per message, private to the user (mode 700 and 600) and never executable;
+nothing is overwritten. Programs and installers are never saved, and an archive
+(zip, tar, gzipped tar) is saved only after its contents pass inspection, then
+listed; `unpack: true` unpacks it into `<name>.unpacked/` beside it. A
+view-once message's files are not saved. On macOS every saved file carries the
+quarantine flag. It needs no daemon. The skill is
+[`signal-files`](skills/signal-files/SKILL.md), shown as
+`signal-tools:signal-files` in Claude Code and `signal-tools:files` in Hermes.
+
 > > > > > > > eb4147b (docs: add the contacts skill and list the contact tool)
 
 ## Adding a tool
@@ -232,15 +249,17 @@ variable, and an option or setting wins over the variable too.
 | `exclude_tools` | `--exclude-tools` | `SIGNAL_TOOLS_EXCLUDE_TOOLS` | single tools to remove by ID; wins over `tools` and `toolsets`                |
 | `confirm`       | `--confirm`       | `SIGNAL_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say |
 | `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | where every label's state lives; default `$XDG_STATE_HOME/signal-tools`       |
+| `download_dir`  | `--download-dir`  | `SIGNAL_TOOLS_DOWNLOAD_DIR`  | where received files are saved; default `~/Downloads/signal-tools`            |
 
 Lists are comma-separated in a flag or a variable. Where each harness reads them:
 
 - **OpenCode** takes the plugin `options` shown above, with lists as arrays,
-  `read_only` as a boolean and `state_dir` as a path, and falls back to the
-  variables. V2 runs plugins in its background service, which keeps the
-  environment it started with: a variable set where `opencode run` starts has
-  no effect until the service is restarted in that environment
-  (`opencode service restart`). V1 runs plugins in its own process.
+  `read_only` as a boolean and `state_dir` and `download_dir` as paths, and
+  falls back to the variables. V2 runs plugins in its background service,
+  which keeps the environment it started with: a variable set where
+  `opencode run` starts has no effect until the service is restarted in that
+  environment (`opencode service restart`). V1 runs plugins in its own
+  process.
 - **Hermes** takes `plugins.entries.signal-tools.settings` in
   `config.yaml`:
 

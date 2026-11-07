@@ -1,13 +1,33 @@
 import { ToolError, type ToolSettings, type Toolsets } from "../core"
+import { toolDirectories, type GivenDirectory, type ToolDirectories } from "./directory"
+import { resolveDownloadDir } from "./download-dir"
 import { PROJECT_PROFILE, type EntryProfile } from "./profile"
 import { resolveStateDir } from "./state-dir"
+
+export { toolDirectories, type ToolDirectories }
 
 /** Who asks the person before an administrative tool acts: the harness, or the tool through the client's form. */
 export type ConfirmMode = "harness" | "elicitation"
 
-/** The settings needed to run tools: tool selection, read-only mode, and the resolved state directory. */
-export type RunSettings = ToolSettings & { state_dir: string }
+/** The directories the settings name, resolved to absolute paths. */
+export type DirectorySettings = { state_dir: string; download_dir: string }
 
+/** Resolves both state and download directories from their given settings or environment. */
+export function resolveDirectorySettings(
+  given: (name: "state_dir" | "download_dir") => GivenDirectory | undefined,
+  env: Record<string, string | undefined>,
+  profile: EntryProfile,
+): DirectorySettings {
+  return {
+    state_dir: resolveStateDir(given("state_dir"), env, profile),
+    download_dir: resolveDownloadDir(given("download_dir"), env, profile),
+  }
+}
+
+/** The settings needed to run tools: tool selection, read-only mode, and the resolved state and download directories. */
+export type RunSettings = ToolSettings & DirectorySettings
+
+/** The settings an entry point reads from its command line and environment, confirm mode included. */
 export type EntrySettings = RunSettings & { confirm: ConfirmMode }
 
 const CONFIRM_MODES: readonly ConfirmMode[] = ["harness", "elicitation"]
@@ -15,7 +35,7 @@ const ALL_TOOLSETS = "all"
 const TRUE_VALUES: readonly string[] = ["1", "true"]
 const FALSE_VALUES: readonly string[] = ["0", "false"]
 
-type OptionName = "toolsets" | "read_only" | "tools" | "exclude_tools" | "confirm" | "state_dir"
+type OptionName = "toolsets" | "read_only" | "tools" | "exclude_tools" | "confirm" | "state_dir" | "download_dir"
 
 /** A setting's command-line flag and the end of its environment variable, which follows the profile's prefix; a boolean flag takes no value. */
 type Option = { flag: string; envSuffix: string; boolean?: true }
@@ -27,6 +47,7 @@ const OPTIONS: Record<OptionName, Option> = {
   exclude_tools: { flag: "--exclude-tools", envSuffix: "EXCLUDE_TOOLS" },
   confirm: { flag: "--confirm", envSuffix: "CONFIRM" },
   state_dir: { flag: "--state-dir", envSuffix: "STATE_DIR" },
+  download_dir: { flag: "--download-dir", envSuffix: "DOWNLOAD_DIR" },
 }
 
 function envName(name: OptionName, profile: EntryProfile): string {
@@ -99,14 +120,11 @@ function parseConfirm(value: string, source: string): ConfirmMode {
   return mode
 }
 
-/** A setting given as text, and where it came from, for error messages. */
-type SettingText = { text: string; source: string }
-
 function envText(
   name: OptionName,
   env: Record<string, string | undefined>,
   profile: EntryProfile,
-): SettingText | undefined {
+): GivenDirectory | undefined {
   const variable = envName(name, profile)
   const text = env[variable]
   return text === undefined || text.trim() === "" ? undefined : { text, source: variable }
@@ -124,12 +142,12 @@ export function parseSettings(
   profile: EntryProfile = PROJECT_PROFILE,
 ): EntrySettings {
   const flags = readFlags(argv)
-  const value = (name: OptionName): SettingText | undefined =>
+  const value = (name: OptionName): GivenDirectory | undefined =>
     flags[name] !== undefined ? { text: flags[name], source: OPTIONS[name].flag } : envText(name, env, profile)
 
   const settings: EntrySettings = {
     confirm: "harness",
-    state_dir: resolveStateDir(value("state_dir"), env, profile),
+    ...resolveDirectorySettings(value, env, profile),
   }
   const toolsets = value("toolsets")
   if (toolsets) settings.toolsets = checkToolsets(splitList(toolsets.text), toolsets.source, profile.toolsets)
@@ -185,12 +203,32 @@ export function parseStateDir(
   return resolveStateDir(given ?? envText("state_dir", env, profile), env, profile)
 }
 
+/**
+ * Reads only the directory settings from a command line that takes no other
+ * setting, for the command that resolves what a call writes to: any other
+ * settings flag is `invalid_argument`. A flag wins over its environment variable.
+ */
+export function parseDirectorySettings(
+  argv: string[],
+  env: Record<string, string | undefined>,
+  profile: EntryProfile = PROJECT_PROFILE,
+): DirectorySettings {
+  const flags = readFlags(argv)
+  const other = (Object.keys(flags) as OptionName[]).find((name) => name !== "state_dir" && name !== "download_dir")
+  if (other !== undefined)
+    throw new ToolError("invalid_argument", `Option ${OPTIONS[other].flag} is not available here.`)
+  const given = (name: "state_dir" | "download_dir"): GivenDirectory | undefined =>
+    flags[name] !== undefined ? { text: flags[name], source: OPTIONS[name].flag } : envText(name, env, profile)
+  return resolveDirectorySettings(given, env, profile)
+}
+
 const TOOL_OPTION_NAMES = [
   "toolsets",
   "read_only",
   "tools",
   "exclude_tools",
   "state_dir",
+  "download_dir",
 ] as const satisfies readonly OptionName[]
 type ToolOptionName = (typeof TOOL_OPTION_NAMES)[number]
 
@@ -202,29 +240,15 @@ function optionError(name: string, expected: string): ToolError {
   return new ToolError("invalid_argument", `Option "${name}" must be ${expected}.`)
 }
 
-function stateDirOption(value: unknown): string {
-  if (typeof value !== "string") throw optionError("state_dir", "an absolute path")
+function directoryOption(name: "state_dir" | "download_dir", value: unknown): string {
+  if (typeof value !== "string") throw optionError(name, "an absolute path")
   return value
 }
 
-function toolsetsOption(value: unknown, toolsets: Toolsets): string[] | "all" | undefined {
-  if (value === ALL_TOOLSETS) return ALL_TOOLSETS
-  const names = stringList(value)
-  if (!names) throw optionError("toolsets", `a list of toolset names or "${ALL_TOOLSETS}"`)
-  return checkToolsets(names, 'option "toolsets"', toolsets)
-}
-
-function booleanOption(value: unknown): boolean {
-  if (typeof value !== "boolean") throw optionError("read_only", "true or false")
-  return value
-}
-
-function listOption(name: "tools" | "exclude_tools"): (value: unknown) => string[] {
-  return (value) => {
-    const list = stringList(value)
-    if (!list) throw optionError(name, "a list of tool ids")
-    return list
-  }
+function listOption(name: ToolOptionName, value: unknown): string[] {
+  const list = stringList(value)
+  if (!list) throw optionError(name, "a list of tool ids")
+  return list
 }
 
 /**
@@ -248,31 +272,51 @@ export function settingsFromOptions(
   const resolve = <T>(
     name: ToolOptionName,
     fromOption: (value: unknown) => T,
-    fromText: (text: SettingText) => T,
+    fromText: (text: GivenDirectory) => T,
   ): T | undefined => {
     if (given[name] !== undefined) return fromOption(given[name])
     const text = envText(name, env, profile)
     return text !== undefined ? fromText(text) : undefined
   }
 
-  const stateDirGiven =
-    given.state_dir !== undefined
-      ? { text: stateDirOption(given.state_dir), source: 'Option "state_dir"' }
-      : envText("state_dir", env, profile)
+  const directoryGiven = (name: "state_dir" | "download_dir"): GivenDirectory | undefined =>
+    given[name] !== undefined
+      ? { text: directoryOption(name, given[name]), source: `Option "${name}"` }
+      : envText(name, env, profile)
   const settings: RunSettings = {
-    state_dir: resolveStateDir(stateDirGiven, env, profile),
+    ...resolveDirectorySettings(directoryGiven, env, profile),
   }
   const toolsets = resolve(
     "toolsets",
-    (value) => toolsetsOption(value, profile.toolsets),
+    (value) => {
+      if (value === ALL_TOOLSETS) return ALL_TOOLSETS
+      const names = stringList(value)
+      if (!names) throw optionError("toolsets", `a list of toolset names or "${ALL_TOOLSETS}"`)
+      return checkToolsets(names, 'option "toolsets"', profile.toolsets)
+    },
     ({ text, source }) => checkToolsets(splitList(text), source, profile.toolsets),
   )
   if (toolsets !== undefined) settings.toolsets = toolsets
-  const readOnly = resolve("read_only", booleanOption, ({ text, source }) => parseBoolean(text, source))
+  const readOnly = resolve(
+    "read_only",
+    (value) => {
+      if (typeof value !== "boolean") throw optionError("read_only", "true or false")
+      return value
+    },
+    ({ text, source }) => parseBoolean(text, source),
+  )
   if (readOnly !== undefined) settings.read_only = readOnly
-  const tools = resolve("tools", listOption("tools"), ({ text }) => splitList(text))
+  const tools = resolve(
+    "tools",
+    (value) => listOption("tools", value),
+    ({ text }) => splitList(text),
+  )
   if (tools !== undefined) settings.tools = tools
-  const excluded = resolve("exclude_tools", listOption("exclude_tools"), ({ text }) => splitList(text))
+  const excluded = resolve(
+    "exclude_tools",
+    (value) => listOption("exclude_tools", value),
+    ({ text }) => splitList(text),
+  )
   if (excluded !== undefined) settings.exclude_tools = excluded
   return settings
 }

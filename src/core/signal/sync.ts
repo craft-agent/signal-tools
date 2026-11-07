@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs"
 import { rm, statfs } from "node:fs/promises"
-import { join } from "node:path"
 import { readLinkedAccount } from "./account"
 import { DaemonConnection } from "./daemon"
 import { accountId } from "./ids"
@@ -84,7 +83,7 @@ async function receive(run: Run, session: Session, daemon: Daemon, connection: D
   const receiver = new Receiver({
     mirror,
     me,
-    attachmentsDir: join(paths.signalCli, "attachments"),
+    attachmentsDir: paths.attachments,
     now,
     log,
     onGroupsStale: () => wakeup.notify(),

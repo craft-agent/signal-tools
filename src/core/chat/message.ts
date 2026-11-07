@@ -2,13 +2,12 @@ import { isRecord } from "../signal/daemon-errors"
 import { messageId } from "../signal/ids"
 import type { Mirror } from "../signal/mirror"
 import type { StoredAttachment, StoredMention, StoredQuote } from "../signal/mirror-parts"
+import { messageDisappearsAt } from "../signal/mirror-rows"
 import { formatLocalTime } from "../time"
 import { renderMentions } from "./mentions"
 import { PRIVATE_NOTE, UNSUPPORTED_NOTE, type MessageEntry } from "./message-schema"
 import { loadRelated, readJson, readList, type Related, type StoredMessage } from "./message-rows"
 import { OWN_NAME, type People } from "./people"
-
-const MS_PER_SECOND = 1000
 
 /** A stored message with its JSON columns read. */
 type Parsed = {
@@ -110,8 +109,8 @@ function entryOf(
   if (reacted) entry.reactions = reacted
   if (row.expires_in > 0) {
     entry.disappears_after_seconds = row.expires_in
-    if (row.expire_start !== null) {
-      const disappearsAt = row.expire_start + row.expires_in * MS_PER_SECOND
+    const disappearsAt = messageDisappearsAt(row)
+    if (disappearsAt !== null) {
       entry.disappears_at = formatLocalTime(disappearsAt)
       if (disappearsAt <= now) entry.expired = true
     }
