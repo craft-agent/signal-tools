@@ -9,6 +9,16 @@ import { placeholders } from "./sql"
 /** What a chat with oneself is called. */
 export const NOTE_TO_SELF = "Note to Self"
 
+/** Whether a chat is the user's own (Note to Self). */
+export function isNoteToSelf(chatId: string, me: string | null): boolean {
+  return me !== null && chatId === me
+}
+
+/** Whether a group chat is one the user is no longer a member of. */
+export function isLeftGroup(chat: StoredChat): boolean {
+  return chat.kind === "group" && !chat.member
+}
+
 /** A stored chat as `CHAT_COLUMNS` selects it. */
 export type StoredChat = {
   id: string
@@ -84,7 +94,7 @@ export function personIds(chats: readonly StoredChat[]): string[] {
  * display name. Null when none is known. The people of the chat must be loaded.
  */
 export function chatName(chat: StoredChat, people: People): string | null {
-  if (chat.id === people.me) return NOTE_TO_SELF
+  if (isNoteToSelf(chat.id, people.me)) return NOTE_TO_SELF
   if (chat.kind === "group") return chat.name
   return people.displayName(chat.id, chat.number)
 }
@@ -105,7 +115,7 @@ export function chatHeader(chat: StoredChat, people: People): ChatRef {
 
 /** A person's number when known; never the user's own, whose chat is Note to Self. */
 export function chatNumber(chat: StoredChat, people: People): string | null {
-  if (chat.kind !== "person" || chat.id === people.me) return null
+  if (chat.kind !== "person" || isNoteToSelf(chat.id, people.me)) return null
   const number = people.number(chat.id) ?? chat.number
   return number !== null && !people.isOwnNumber(number) ? number : null
 }

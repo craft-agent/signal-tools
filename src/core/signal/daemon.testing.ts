@@ -4,7 +4,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 /** What the fake daemon does with a request: answer it, never answer, or hang up. */
-export type FakeReply = { result: unknown } | { error: { code: number; message: string } } | "hang" | "close"
+export type FakeReply =
+  { result: unknown } | { error: { code: number; message: string; data?: unknown } } | "hang" | "close"
 
 export type FakeDaemon = {
   socketPath: string

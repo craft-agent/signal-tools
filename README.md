@@ -185,7 +185,20 @@ quarantine flag. It needs no daemon. The skill is
 [`signal-files`](skills/signal-files/SKILL.md), shown as
 `signal-tools:signal-files` in Claude Code and `signal-tools:files` in Hermes.
 
-> > > > > > > eb4147b (docs: add the contacts skill and list the contact tool)
+### Sends (`sends`)
+
+| Tool                  | What it does                                                                       | Class |
+| --------------------- | ---------------------------------------------------------------------------------- | ----- |
+| `signal_message_send` | sends one text of at most 4,000 characters to a chat, optionally quoting a message | add   |
+
+A chat is always its id; the user's own account id is Note to Self, and a group
+the user left is refused. A result means Signal accepted the message, with
+`reached` and `not_reached` for a group; any other failure after the request
+went out is `uncertain`: check the phone before sending again. The message is
+recorded in the mirror, and a record that fails is listed under `errors`
+without undoing the send. It needs the running sync service. The skill is
+[`signal-sends`](skills/signal-sends/SKILL.md), shown as
+`signal-tools:signal-sends` in Claude Code and `signal-tools:sends` in Hermes.
 
 ## Adding a tool
 

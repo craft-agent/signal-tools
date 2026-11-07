@@ -42,7 +42,31 @@ export function afterWriteError(method: string, effect: CallEffect, reason: stri
     : new ToolError("upstream_error", `${method} failed (${reason}).`)
 }
 
-export function rpcError(method: string, effect: CallEffect, code: number | undefined, message: string): ToolError {
+/**
+ * The `data` of each error reply, by the error made from it. Kept apart from
+ * the error (not as its `cause`) so that it reaches only a caller that asks
+ * for it: signal-cli's data holds numbers, which no message or log may carry.
+ */
+const replyData = new WeakMap<ToolError, unknown>()
+
+/** The `data` of the error reply that `error` was made from; undefined for any other error or a reply without data. */
+export function rpcErrorData(error: unknown): unknown {
+  return error instanceof ToolError ? replyData.get(error) : undefined
+}
+
+export function rpcError(
+  method: string,
+  effect: CallEffect,
+  code: number | undefined,
+  message: string,
+  data?: unknown,
+): ToolError {
+  const error = classifyReply(method, effect, code, message)
+  if (data !== undefined && data !== null) replyData.set(error, data)
+  return error
+}
+
+function classifyReply(method: string, effect: CallEffect, code: number | undefined, message: string): ToolError {
   switch (code) {
     case RpcCode.ParseError:
     case RpcCode.InvalidRequest:
