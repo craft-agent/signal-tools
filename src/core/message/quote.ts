@@ -1,11 +1,10 @@
 import { readList } from "../chat/message-rows"
-import { ToolError } from "../errors"
 import type { Mirror } from "../signal/mirror"
-import type { StoredMention } from "../signal/mirror-parts"
-import { hasDisappeared, isDeleted } from "../signal/mirror-rows"
+import type { StoredMention, StoredQuote } from "../signal/mirror-parts"
+import { findLiveRow } from "./lookup"
 
-const GONE_MESSAGE = "That message is gone; it was deleted or has disappeared."
-const UNKNOWN_MESSAGE = "No message with this id in this chat."
+/** A mention sits at one placeholder character of the quoted text. */
+const QUOTED_MENTION_LENGTH = 1
 
 /** The message a reply quotes, as the mirror has it now. */
 export type Quote = {
@@ -19,12 +18,36 @@ export type Quote = {
   mentions: StoredMention[]
 }
 
-type QuotedRow = {
-  kind: "message" | "timer"
-  body: string | null
-  mentions: string | null
-  expires_in: number
-  expire_start: number | null
+/** The mentions that name someone, as a quote carries them. */
+function namedMentions(mentions: StoredMention[]): StoredMention[] {
+  return mentions.filter((mention) => mention.uuid ?? mention.number)
+}
+
+/**
+ * The message a reply quotes, for a reply to quote it again. Null when the
+ * stored quote names no author, which signal-cli cannot quote without.
+ */
+export function quoteOfStored(stored: StoredQuote | null): Quote | null {
+  if (!stored || stored.author === null) return null
+  return {
+    timestamp: stored.id,
+    author: stored.author,
+    text: stored.text,
+    mentions: namedMentions(stored.mentions ?? []),
+  }
+}
+
+/** The arguments that make the message a reply: the quoted message's time, author, text and mentions. */
+export function quoteParams(quote: Quote): Record<string, unknown> {
+  const mentions = quote.mentions.map(
+    (mention) => `${mention.start}:${QUOTED_MENTION_LENGTH}:${mention.uuid ?? mention.number}`,
+  )
+  return {
+    quoteTimestamp: quote.timestamp,
+    quoteAuthor: quote.author,
+    ...(quote.text ? { quoteMessage: quote.text } : {}),
+    ...(mentions.length > 0 ? { quoteMention: mentions } : {}),
+  }
 }
 
 /**
@@ -33,19 +56,17 @@ type QuotedRow = {
  * alike; so is one deleted for everyone or expired, saying it is gone.
  */
 export function findQuote(mirror: Mirror, chat: string, reference: { author: string; ts: number }, now: number): Quote {
-  const row = mirror
-    .prepare(
-      "SELECT kind, body, mentions, expires_in, expire_start FROM messages WHERE chat = ? AND author = ? AND ts = ?",
-    )
-    .get(chat, reference.author, reference.ts) as QuotedRow | undefined
-  if (!row || row.kind === "timer") {
-    throw new ToolError("not_found", isDeleted(mirror, reference.author, reference.ts) ? GONE_MESSAGE : UNKNOWN_MESSAGE)
-  }
-  if (hasDisappeared(row, now)) throw new ToolError("not_found", GONE_MESSAGE)
+  const row = findLiveRow<{ body: string | null; mentions: string | null }>(
+    mirror,
+    chat,
+    reference,
+    "body, mentions",
+    now,
+  )
   return {
     timestamp: reference.ts,
     author: reference.author,
     text: row.body,
-    mentions: readList<StoredMention>(row.mentions).filter((mention) => mention.uuid ?? mention.number),
+    mentions: namedMentions(readList<StoredMention>(row.mentions)),
   }
 }
