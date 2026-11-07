@@ -3,6 +3,7 @@ import { signalAccountRead } from "./core/account/read"
 import { signalChatRead } from "./core/chat/read"
 import { signalContactRead } from "./core/contact/read"
 import { signalFileSave } from "./core/file/save"
+import { signalFileSend } from "./core/file/send/tool"
 import { signalMessageDelete } from "./core/message/delete"
 import { signalMessageEdit } from "./core/message/edit"
 import { signalMessageReact } from "./core/message/react"
@@ -14,6 +15,7 @@ export const ALL_TOOLS: ToolSpec[] = [
   signalChatRead,
   signalContactRead,
   signalFileSave,
+  signalFileSend,
   signalMessageDelete,
   signalMessageEdit,
   signalMessageReact,

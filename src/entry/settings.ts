@@ -2,6 +2,7 @@ import { ToolError, type ToolSettings, type Toolsets } from "../core"
 import { toolDirectories, type GivenDirectory, type ToolDirectories } from "./directory"
 import { resolveDownloadDir } from "./download-dir"
 import { PROJECT_PROFILE, type EntryProfile } from "./profile"
+import { resolveSendDirs } from "./send-dirs"
 import { resolveStateDir } from "./state-dir"
 
 export { toolDirectories, type ToolDirectories }
@@ -10,17 +11,19 @@ export { toolDirectories, type ToolDirectories }
 export type ConfirmMode = "harness" | "elicitation"
 
 /** The directories the settings name, resolved to absolute paths. */
-export type DirectorySettings = { state_dir: string; download_dir: string }
+export type DirectorySettings = { state_dir: string; download_dir: string; send_dirs: string[] }
 
-/** Resolves both state and download directories from their given settings or environment. */
+/** Resolves the state, download and send directories from their given settings or environment; `sendDirs` holds one entry per directory given. */
 export function resolveDirectorySettings(
   given: (name: "state_dir" | "download_dir") => GivenDirectory | undefined,
+  sendDirs: GivenDirectory[],
   env: Record<string, string | undefined>,
   profile: EntryProfile,
 ): DirectorySettings {
   return {
     state_dir: resolveStateDir(given("state_dir"), env, profile),
     download_dir: resolveDownloadDir(given("download_dir"), env, profile),
+    send_dirs: resolveSendDirs(sendDirs, env),
   }
 }
 
@@ -35,7 +38,8 @@ const ALL_TOOLSETS = "all"
 const TRUE_VALUES: readonly string[] = ["1", "true"]
 const FALSE_VALUES: readonly string[] = ["0", "false"]
 
-type OptionName = "toolsets" | "read_only" | "tools" | "exclude_tools" | "confirm" | "state_dir" | "download_dir"
+type OptionName =
+  "toolsets" | "read_only" | "tools" | "exclude_tools" | "confirm" | "state_dir" | "download_dir" | "send_dirs"
 
 /** A setting's command-line flag and the end of its environment variable, which follows the profile's prefix; a boolean flag takes no value. */
 type Option = { flag: string; envSuffix: string; boolean?: true }
@@ -48,6 +52,7 @@ const OPTIONS: Record<OptionName, Option> = {
   confirm: { flag: "--confirm", envSuffix: "CONFIRM" },
   state_dir: { flag: "--state-dir", envSuffix: "STATE_DIR" },
   download_dir: { flag: "--download-dir", envSuffix: "DOWNLOAD_DIR" },
+  send_dirs: { flag: "--send-dirs", envSuffix: "SEND_DIRS" },
 }
 
 function envName(name: OptionName, profile: EntryProfile): string {
@@ -84,6 +89,11 @@ function splitList(value: string): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter((item) => item !== "")
+}
+
+/** A comma-separated directory setting as one entry per directory, each keeping where it came from. */
+function listedDirectories(given: GivenDirectory | undefined): GivenDirectory[] {
+  return given === undefined ? [] : splitList(given.text).map((text) => ({ text, source: given.source }))
 }
 
 function checkToolsets(names: string[], source: string, toolsets: Toolsets): string[] | "all" | undefined {
@@ -147,7 +157,7 @@ export function parseSettings(
 
   const settings: EntrySettings = {
     confirm: "harness",
-    ...resolveDirectorySettings(value, env, profile),
+    ...resolveDirectorySettings(value, listedDirectories(value("send_dirs")), env, profile),
   }
   const toolsets = value("toolsets")
   if (toolsets) settings.toolsets = checkToolsets(splitList(toolsets.text), toolsets.source, profile.toolsets)
@@ -214,12 +224,14 @@ export function parseDirectorySettings(
   profile: EntryProfile = PROJECT_PROFILE,
 ): DirectorySettings {
   const flags = readFlags(argv)
-  const other = (Object.keys(flags) as OptionName[]).find((name) => name !== "state_dir" && name !== "download_dir")
+  const other = (Object.keys(flags) as OptionName[]).find(
+    (name) => name !== "state_dir" && name !== "download_dir" && name !== "send_dirs",
+  )
   if (other !== undefined)
     throw new ToolError("invalid_argument", `Option ${OPTIONS[other].flag} is not available here.`)
-  const given = (name: "state_dir" | "download_dir"): GivenDirectory | undefined =>
+  const given = (name: "state_dir" | "download_dir" | "send_dirs"): GivenDirectory | undefined =>
     flags[name] !== undefined ? { text: flags[name], source: OPTIONS[name].flag } : envText(name, env, profile)
-  return resolveDirectorySettings(given, env, profile)
+  return resolveDirectorySettings(given, listedDirectories(given("send_dirs")), env, profile)
 }
 
 const TOOL_OPTION_NAMES = [
@@ -229,6 +241,7 @@ const TOOL_OPTION_NAMES = [
   "exclude_tools",
   "state_dir",
   "download_dir",
+  "send_dirs",
 ] as const satisfies readonly OptionName[]
 type ToolOptionName = (typeof TOOL_OPTION_NAMES)[number]
 
@@ -283,8 +296,14 @@ export function settingsFromOptions(
     given[name] !== undefined
       ? { text: directoryOption(name, given[name]), source: `Option "${name}"` }
       : envText(name, env, profile)
+  const sendDirsGiven = (): GivenDirectory[] => {
+    if (given.send_dirs === undefined) return listedDirectories(envText("send_dirs", env, profile))
+    const list = stringList(given.send_dirs)
+    if (!list) throw optionError("send_dirs", "a list of absolute paths")
+    return list.map((text) => ({ text, source: 'Option "send_dirs"' }))
+  }
   const settings: RunSettings = {
-    ...resolveDirectorySettings(directoryGiven, env, profile),
+    ...resolveDirectorySettings(directoryGiven, sendDirsGiven(), env, profile),
   }
   const toolsets = resolve(
     "toolsets",

@@ -175,6 +175,32 @@ describe("run", () => {
     expect(capturedDownloadDir).toBe("/custom/downloads")
   })
 
+  test("passes sendDirs from the flag or the environment to execute", async () => {
+    let capturedSendDirs: readonly string[] | undefined
+    const checkTool = {
+      ...specs[0]!,
+      id: "demo_thing_read",
+      async execute(_args: unknown, ctx: { sendDirs?: readonly string[] }) {
+        capturedSendDirs = ctx.sendDirs
+        return { tool: "demo_thing_read", cwd: "/x" }
+      },
+    }
+    const flagged = await cli(["run", "demo_thing_read", "--cwd", "/x", "--send-dirs", "/a,/b"], "", {
+      specs: [checkTool as any],
+    })
+    expect(flagged.code).toBe(EXIT_OK)
+    expect(capturedSendDirs).toEqual(["/a", "/b"])
+
+    await cli(["run", "demo_thing_read", "--cwd", "/x"], "", {
+      specs: [checkTool as any],
+      env: { DEMO_SEND_DIRS: "/c" },
+    })
+    expect(capturedSendDirs).toEqual(["/c"])
+
+    await cli(["run", "demo_thing_read", "--cwd", "/x"], "", { specs: [checkTool as any] })
+    expect(capturedSendDirs).toEqual([])
+  })
+
   test("names the program in ctx.programName", async () => {
     let capturedProgram: string | undefined
     const checkTool = {

@@ -18,9 +18,14 @@ export function createNew(path: string): Promise<FileHandle> {
   return open(path, CREATE_NEW, FILE_MODE)
 }
 
-/** Opens a file for reading, refusing to follow a link at its last component (`ELOOP`). */
-export function openForRead(path: string): Promise<FileHandle> {
-  return open(path, constants.O_RDONLY | NO_FOLLOW)
+/**
+ * Opens a file for reading, refusing to follow a link at its last component
+ * (`ELOOP`). `extraFlags` are added to the open flags, such as
+ * `constants.O_NONBLOCK`, which makes the open of a FIFO return at once and
+ * changes nothing for a regular file.
+ */
+export function openForRead(path: string, extraFlags = 0): Promise<FileHandle> {
+  return open(path, constants.O_RDONLY | NO_FOLLOW | extraFlags)
 }
 
 /** The error code of a failed file system call, if it has one. */
