@@ -1,6 +1,7 @@
 import { ToolError } from "../errors"
 import { parseMessageId } from "../signal/ids"
 import { MAX_TEXT_CHARACTERS } from "./constants"
+import { checkedEmoji } from "./emoji"
 
 /** The text as it will be sent: trimmed, 1 to `MAX_TEXT_CHARACTERS` code points, else `invalid_argument`. */
 export function checkedText(text: string): string {
@@ -26,4 +27,18 @@ export function messageReference(id: string, name: string): { author: string; ts
     )
   }
   return reference
+}
+
+/** What a reaction call asks for: an emoji to set, or the removal of the current one, which an emoji may confirm. */
+export type ReactionRequest = { remove: false; emoji: string } | { remove: true; emoji: string | undefined }
+
+/**
+ * What a reaction call asks for. Without `remove` the `emoji` is required;
+ * every emoji given must pass `checkedEmoji`. Else `invalid_argument`.
+ */
+export function reactionRequest(args: { emoji?: string; remove?: boolean }): ReactionRequest {
+  const emoji = args.emoji === undefined ? undefined : checkedEmoji(args.emoji)
+  if (args.remove) return { remove: true, emoji }
+  if (emoji === undefined) throw new ToolError("invalid_argument", "emoji is required unless remove is set.")
+  return { remove: false, emoji }
 }

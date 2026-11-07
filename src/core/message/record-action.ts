@@ -2,7 +2,7 @@ import { ToolError } from "../errors"
 import type { IngestContext } from "../signal/ingest-context"
 import { deleteMessage, removeFiles } from "../signal/ingest-delete"
 import { editMessage } from "../signal/ingest-edit"
-import type { Sender } from "../signal/ingest-messages"
+import { applyDataMessage, type Sender } from "../signal/ingest-messages"
 import type { LabelPaths } from "../signal/labels"
 import { inTransaction, type Mirror } from "../signal/mirror"
 import type { PreparedChat } from "./prepare"
@@ -72,4 +72,35 @@ export function recordDelete(paths: LabelPaths, { me }: PreparedChat, timestamp:
     inTransaction(mirror, () => deleteMessage(mirror, ctx, me, timestamp)),
   )
   removeFiles(files ?? [])
+}
+
+/**
+ * Records a reaction Signal accepted (set, replacing the user's earlier one,
+ * or removed) in the label's mirror, as the sync service stores one the user
+ * makes on another device: one transaction, by `applyDataMessage`. `target` is
+ * the reacted-to message by its author and sent time, `timestamp` the time of
+ * the reaction. Any failure throws a `ToolError` that says the reaction was
+ * sent but is not in the mirror yet, or, for a message deleted for everyone
+ * since (the reaction is dropped, as ingest drops it), that the message has
+ * been deleted.
+ */
+export function recordReaction(
+  paths: LabelPaths,
+  { chat, me }: PreparedChat,
+  reaction: { target: { author: string; ts: number }; emoji: string; remove: boolean; timestamp: number },
+): void {
+  recordUpdate(paths, me, "reaction", (mirror, ctx) => {
+    const data = {
+      timestamp: reaction.timestamp,
+      reaction: {
+        emoji: reaction.emoji,
+        targetAuthorUuid: reaction.target.author,
+        targetSentTimestamp: reaction.target.ts,
+        isRemove: reaction.remove,
+      },
+    }
+    const result = applyDataMessage(mirror, ctx, ownSender(chat.id, me), data)
+    if (result.done.includes("dropped-deleted")) return "dropped-deleted"
+    return result.done.includes("reaction") ? "ok" : null
+  })
 }

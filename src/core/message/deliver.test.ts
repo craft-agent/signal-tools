@@ -32,7 +32,11 @@ function preparedFor(id: string): PreparedChat {
   return { chat, me: ME, noteToSelf: id === ME }
 }
 
-const ACTIONS: Record<string, DeliveryAction> = { send: "send", remoteDelete: "delete" }
+const ACTIONS: Record<string, DeliveryAction> = {
+  send: "send",
+  remoteDelete: "delete",
+  sendReaction: "react",
+}
 
 /** Delivers `method` as the action that uses it, unless the options say otherwise. */
 function run(
@@ -108,11 +112,12 @@ describe("the outcome", () => {
 })
 
 describe("an uncertain outcome says what the action may have done", () => {
-  test("in the words of send, edit and delete", () => {
+  test("in the words of send, edit, delete and react", () => {
     expect(UNCERTAIN_MESSAGES).toEqual({
       send: "The message may have been sent. Check the chat on the phone before sending it again.",
       edit: "The edit may have gone out. Check the chat on the phone before editing again.",
       delete: "The message may have been deleted for everyone. Check the chat on the phone before deleting again.",
+      react: "The reaction may have gone out. Check the chat on the phone before reacting again.",
     })
   })
 
@@ -120,6 +125,7 @@ describe("an uncertain outcome says what the action may have done", () => {
     ["send", "send", { message: "hello" }],
     ["edit", "send", { message: "hello", editTimestamp: 5000 }],
     ["delete", "remoteDelete", { targetTimestamp: 5000 }],
+    ["react", "sendReaction", { emoji: "👍", targetAuthor: ALICE, targetTimestamp: 5000 }],
   ] as const)("%s answered in a form that cannot be read", async (action, method, params) => {
     await t.serve({ result: "done" })
     expect(await failureOf(deliver(t.paths, preparedFor(ALICE), method, params, { action }))).toMatchObject({
@@ -128,13 +134,16 @@ describe("an uncertain outcome says what the action may have done", () => {
     })
   })
 
-  test.each(["send", "edit", "delete"] as const)("%s whose connection closed without an answer", async (action) => {
-    await t.serve("close")
-    expect(await failureOf(deliver(t.paths, preparedFor(ALICE), "send", {}, { action }))).toMatchObject({
-      code: "uncertain",
-      message: UNCERTAIN_MESSAGES[action],
-    })
-  })
+  test.each(["send", "edit", "delete", "react"] as const)(
+    "%s whose connection closed without an answer",
+    async (action) => {
+      await t.serve("close")
+      expect(await failureOf(deliver(t.paths, preparedFor(ALICE), "send", {}, { action }))).toMatchObject({
+        code: "uncertain",
+        message: UNCERTAIN_MESSAGES[action],
+      })
+    },
+  )
 })
 
 describe("the options", () => {

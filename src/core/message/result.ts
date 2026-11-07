@@ -1,7 +1,7 @@
 import type { FailureReason, RecipientFailure, SendResults } from "../signal/daemon-results"
 import { isGroupChat, messageId } from "../signal/ids"
 import { formatLocalTime } from "../time"
-import type { DeleteOutput, EditOutput } from "./action-schema"
+import type { DeleteOutput, EditOutput, ReactOutput } from "./action-schema"
 import type { NotReached, SendOutput } from "./schema"
 
 const REASONS: Record<FailureReason, string> = {
@@ -60,4 +60,20 @@ export function editResult(chat: string, id: string, sent: SendResults, editsLef
 /** The result of a delete for everyone Signal accepted: the deleted message's id, and who it reached. */
 export function deleteResult(chat: string, id: string, sent: SendResults): DeleteOutput {
   return { id, chat, deleted: true, ...deliveryResult(chat, sent) }
+}
+
+/** The result of a reaction Signal accepted: the message, the emoji set or removed, and who it reached. */
+export function reactResult(
+  chat: string,
+  id: string,
+  reaction: { emoji: string; remove: boolean },
+  sent: SendResults,
+): ReactOutput {
+  return {
+    id,
+    chat,
+    emoji: reaction.emoji,
+    ...(reaction.remove ? { removed: true as const } : {}),
+    ...deliveryResult(chat, sent),
+  }
 }

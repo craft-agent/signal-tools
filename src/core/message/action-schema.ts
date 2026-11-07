@@ -48,3 +48,35 @@ export const deleteOutput = z.strictObject({
 
 /** What `signal_message_delete` returns. */
 export type DeleteOutput = z.infer<typeof deleteOutput>
+
+export const reactInput = z.object({
+  account: accountArgument,
+  chat: chatArgument,
+  id: z
+    .string()
+    .describe(
+      "The id of the message to react to, the user's own or another person's, `<account id>:<sent time in ms>` as signal_chat_read gives it.",
+    ),
+  emoji: z
+    .string()
+    .optional()
+    .describe(
+      "Exactly one emoji, such as 👍. Required unless `remove` is set; with `remove` it must be the user's current reaction.",
+    ),
+  remove: z
+    .boolean()
+    .optional()
+    .describe("Removes the user's reaction to that message instead of setting one; `emoji` may be left out."),
+})
+
+export const reactOutput = z.strictObject({
+  id: z.string().describe("The message reacted to."),
+  chat: z.string(),
+  emoji: z.string().describe("The reaction set, or the one removed."),
+  removed: z.literal(true).optional().describe("Set when the reaction was removed."),
+  ...deliveryFields("a reaction"),
+  errors: recordErrors("the reaction was sent"),
+})
+
+/** What `signal_message_react` returns. */
+export type ReactOutput = z.infer<typeof reactOutput>
