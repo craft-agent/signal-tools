@@ -1,5 +1,5 @@
 import { ToolError } from "../errors"
-import { callDaemon, isDaemonNotRunning } from "../signal/daemon"
+import { callDaemon, isDaemonNotRunning, syncServiceNotRunning } from "../signal/daemon"
 import { isRecord } from "../signal/daemon-errors"
 import { accountId } from "../signal/ids"
 import type { LabelPaths } from "../signal/labels"
@@ -49,13 +49,7 @@ export async function checkNumbers(paths: LabelPaths, given: string[] | undefine
       { effect: "read", timeoutMs: CHECK_TIMEOUT_MS, signal },
     )
   } catch (error) {
-    if (isDaemonNotRunning(error)) {
-      throw new ToolError(
-        "upstream_error",
-        "The Signal daemon is not running for this account; start its sync service.",
-        { cause: error },
-      )
-    }
+    if (isDaemonNotRunning(error)) throw syncServiceNotRunning(error)
     throw error
   }
   const entries = Array.isArray(result)

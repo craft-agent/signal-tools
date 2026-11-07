@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import type { ErrorCode } from "../errors"
 import { callDaemon } from "./daemon"
-import { maskNumbers } from "./daemon-errors"
+import { maskNumbers, rpcErrorData } from "./daemon-errors"
 import { failureOf, startFakeDaemon, type FakeDaemon } from "./daemon.testing"
 
 const daemons: FakeDaemon[] = []
@@ -67,12 +67,27 @@ describe("JSON-RPC errors", () => {
     expect(error.message).not.toContain("x".repeat(301))
   })
 
-  test("never carries the raw data of an error", async () => {
-    const daemon = await startDaemon(() => ({
-      error: { code: -1, message: "bad", data: { secret: "hunter2" } } as never,
-    }))
+  test("never carries the raw data of an error in its message or cause", async () => {
+    const daemon = await startDaemon(() => ({ error: { code: -1, message: "bad", data: { secret: "hunter2" } } }))
     const error = await failureOf(callDaemon(daemon.socketPath, "send"))
     expect(error.message).not.toContain("hunter2")
+    expect(error.cause).toBeUndefined()
+    expect(JSON.stringify(error)).not.toContain("hunter2")
+  })
+
+  test("hands the data of an error reply to a caller that asks for it", async () => {
+    const data = { response: { timestamp: 5, results: [] } }
+    const daemon = await startDaemon(() => ({ error: { code: -5, message: "limited", data } }))
+    const error = await failureOf(callDaemon(daemon.socketPath, "send", {}, { effect: "write" }))
+    expect(error).toMatchObject({ code: "rate_limited" })
+    expect(rpcErrorData(error)).toEqual(data)
+  })
+
+  test("has no data for a reply without any, or for an error that is not a reply", async () => {
+    const daemon = await startDaemon(() => ({ error: { code: -5, message: "limited" } }))
+    expect(rpcErrorData(await failureOf(callDaemon(daemon.socketPath, "send")))).toBeUndefined()
+    expect(rpcErrorData(new Error("x"))).toBeUndefined()
+    expect(rpcErrorData(undefined)).toBeUndefined()
   })
 })
 

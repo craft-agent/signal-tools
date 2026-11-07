@@ -16,6 +16,13 @@ export function isDaemonNotRunning(error: unknown): boolean {
   return error instanceof ToolError && error.cause === DAEMON_NOT_RUNNING
 }
 
+/** The error for a daemon that is not running, in the words a call tells the person; `cause` is the client's own error. */
+export function syncServiceNotRunning(cause: unknown): ToolError {
+  return new ToolError("upstream_error", "The Signal daemon is not running for this account; start its sync service.", {
+    cause,
+  })
+}
+
 export type CallOptions = {
   /** Defaults to `"read"`. */
   effect?: CallEffect
@@ -39,13 +46,14 @@ export type ConnectOptions = {
 export type Notification = { method: string; params: unknown }
 
 /** What the daemon, or the loss of the connection, made of one request. */
-type Reply = { result: unknown } | { error: { code: number | undefined; message: string } } | { lost: string }
+type Reply =
+  { result: unknown } | { error: { code: number | undefined; message: string; data?: unknown } } | { lost: string }
 
 /** The result of a reply, or the error it stands for. */
 function resultOf(method: string, effect: CallEffect, reply: Reply): unknown {
   if ("result" in reply) return reply.result
   if ("lost" in reply) throw afterWriteError(method, effect, reply.lost)
-  throw rpcError(method, effect, reply.error.code, reply.error.message)
+  throw rpcError(method, effect, reply.error.code, reply.error.message, reply.error.data)
 }
 
 /**
@@ -263,9 +271,13 @@ export class DaemonConnection {
 
     if (typeof message.id === "number") {
       if ("error" in message) {
-        const { code, message: text } = isRecord(message.error) ? message.error : ({} as Record<string, unknown>)
+        const { code, message: text, data } = isRecord(message.error) ? message.error : ({} as Record<string, unknown>)
         this.pending.get(message.id)?.({
-          error: { code: typeof code === "number" ? code : undefined, message: typeof text === "string" ? text : "" },
+          error: {
+            code: typeof code === "number" ? code : undefined,
+            message: typeof text === "string" ? text : "",
+            data,
+          },
         })
       } else if ("result" in message) {
         this.pending.get(message.id)?.({ result: message.result })
