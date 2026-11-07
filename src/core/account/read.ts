@@ -14,6 +14,7 @@ import {
   SUBSCRIBED_AT_META,
 } from "../signal/mirror-meta"
 import { isAlive, readPid } from "../signal/sync-wait"
+import { formatLocalTime, localTimeSchema } from "../time"
 import { defineTool } from "../tool"
 
 const input = z.object({
@@ -26,9 +27,13 @@ const account = z.object({
   service: z
     .enum(["running", "starting", "stopped", "failed", "not running", "never run"])
     .describe("The recorded sync service state, corrected for a service process that is no longer alive."),
-  last_received_at: z.iso.datetime().nullable().describe("When a message was last received, in UTC."),
-  subscribed_at: z.iso.datetime().nullable().describe("When the service subscribed to incoming messages, in UTC."),
-  refreshed_at: z.iso.datetime().nullable().describe("When contacts and groups were last refreshed, in UTC."),
+  last_received_at: localTimeSchema.nullable().describe("When a message was last received, in local time with offset."),
+  subscribed_at: localTimeSchema
+    .nullable()
+    .describe("When the service subscribed to incoming messages, in local time with offset."),
+  refreshed_at: localTimeSchema
+    .nullable()
+    .describe("When contacts and groups were last refreshed, in local time with offset."),
   error: z
     .string()
     .nullable()
@@ -49,7 +54,7 @@ const output = z.object({
 function timestamp(value: string | undefined): string | null {
   if (value === undefined || value.trim() === "") return null
   const date = new Date(Number(value))
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null
+  return Number.isFinite(date.getTime()) ? formatLocalTime(date.getTime()) : null
 }
 
 function nextStep(result: Account, mirrorRefused: boolean): void {

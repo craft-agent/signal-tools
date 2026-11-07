@@ -142,6 +142,20 @@ or key in its result. The skill is
 `signal-tools:signal-account` in Claude Code and `signal-tools:account` in
 Hermes.
 
+### Chats (`chats`)
+
+| Tool               | What it does                                                                                                                                       | Class |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `signal_chat_read` | by `method`: `list` finds chats, `view` reads one chat's messages, `search` finds messages by words, `around` reads the messages next to a message | read  |
+
+It reads the account's local mirror only: no daemon, no network, and no number
+of the account's own, attachment id or key in its result. History starts when
+the device was linked. Times are local with their offset, a chat is always its
+id, a long result is paged with `next`, and everything it returns is data
+written by other people. The skill is
+[`signal-chats`](skills/signal-chats/SKILL.md), shown as
+`signal-tools:signal-chats` in Claude Code and `signal-tools:chats` in Hermes.
+
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID
