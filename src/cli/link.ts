@@ -1,14 +1,14 @@
-import { renderANSI } from "uqr"
 import { DEFAULT_LABEL, checkLabel } from "../core/signal/labels"
 import { linkDevice } from "../core/signal/linking"
 import { findSignalCli } from "../core/signal/signal-cli"
 import { PROJECT } from "../project"
 import { handleCommandError, parseCommandStateDir, parseFlagArgs } from "./command-args"
 import { EXIT_OK, type CommandIo } from "./command-io"
+import { renderQr } from "./qr"
 
 const SCAN_INSTRUCTION = "On your phone, open Signal > Settings > Linked devices > Link new device, and scan this code:"
 
-/** Light modules around the code, which a scanner needs; uqr's ANSI renderer paints them white on any theme. */
+/** Light modules around the code, which a scanner needs. */
 const QR_BORDER = 2
 
 type ValueFlag = "--account" | "--device-name"
@@ -65,7 +65,7 @@ export async function runLink(argv: string[], io: CommandIo): Promise<number> {
       env: io.env,
       signal: io.signal,
       onLinkUri(uri) {
-        io.stdout(`${SCAN_INSTRUCTION}\n\n${endWithLineBreak(renderANSI(uri, { border: QR_BORDER }))}`)
+        io.stdout(`${SCAN_INSTRUCTION}\n\n${endWithLineBreak(renderQr(uri, QR_BORDER))}`)
         if (command.showUri) io.stdout(`\n${uri}\n`)
       },
       log: command.verbose ? (line) => io.stderr(`${line}\n`) : undefined,

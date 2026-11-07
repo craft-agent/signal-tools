@@ -11,8 +11,8 @@ import { runLink } from "./link"
 
 const SCAN_INSTRUCTION = "On your phone, open Signal > Settings > Linked devices > Link new device, and scan this code:"
 const URI = "sgnl://linkdevice?uuid=fake-device&pub_key=fake-key"
-/** The explicit white and black backgrounds the code is painted with, so it scans on any terminal theme. */
-const QR_COLORS = [/\x1b\[47m/, /\x1b\[40m/]
+/** The explicit black and white colors the code is painted with, so it scans on any terminal theme. */
+const QR_COLORS = [/\x1b\[\d+;107m/, /\x1b\[\d+;40m/]
 
 let fixtures: LinkingFixture[] = []
 
