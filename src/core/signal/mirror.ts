@@ -72,11 +72,27 @@ export function openMirrorForWrite(path: string): Mirror {
  * gone, which is the normal state of a mirror whose sync service stopped.
  */
 export function openMirrorForRead(path: string): Mirror {
+  return openCurrentMirror(path, "PRAGMA query_only = ON")
+}
+
+/**
+ * Opens the mirror for a tool that records what it did (a send): it writes,
+ * but never creates or migrates anything. A mirror that does not exist or was
+ * never set up is `not_found`; one of another version is `upstream_error` and
+ * is left untouched. The busy timeout is the sync service's, so a write waits
+ * for the service's own.
+ */
+export function openMirrorForRecord(path: string): Mirror {
+  return openCurrentMirror(path)
+}
+
+/** Opens an existing mirror of the current version without migrating it, after running `pragma` when given. */
+function openCurrentMirror(path: string, pragma?: string): Mirror {
   if (!existsSync(path)) throw new ToolError("not_found", NOT_SYNCED)
   const mirror = new DatabaseSync(path)
   try {
     setBusyTimeout(mirror)
-    mirror.exec("PRAGMA query_only = ON")
+    if (pragma) mirror.exec(pragma)
     const version = schemaVersion(mirror)
     if (version === 0) throw new ToolError("not_found", NOT_SYNCED)
     if (version > MIRROR_VERSION) throw new ToolError("upstream_error", TOO_NEW)
