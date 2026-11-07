@@ -1,42 +1,13 @@
 import { withMirror } from "../chat/open"
-import { ToolError } from "../errors"
-import { parseMessageId } from "../signal/ids"
-import { pickLabel } from "../signal/labels"
 import { defineTool, StepErrors } from "../tool"
-import { ANY_TARGET } from "../targets"
+import { checkedText, messageReference } from "./arguments"
 import { MAX_TEXT_CHARACTERS, MESSAGE_SEND_TOOL_ID } from "./constants"
 import { prepareSend } from "./prepare"
 import { recordSent } from "./record"
 import { sendResult } from "./result"
 import { input, output, type SendOutput } from "./schema"
+import { labelTargets } from "./targets"
 import { transmit } from "./transmit"
-
-/** The text as it will be sent: trimmed, 1 to `MAX_TEXT_CHARACTERS` code points, else `invalid_argument`. */
-function checkedText(text: string): string {
-  const trimmed = text.trim()
-  const length = [...trimmed].length
-  if (length === 0) throw new ToolError("invalid_argument", "text is blank; give the text to send.")
-  if (length > MAX_TEXT_CHARACTERS) {
-    throw new ToolError(
-      "invalid_argument",
-      `text is ${length} characters after trimming; at most ${MAX_TEXT_CHARACTERS}. Send it as several messages.`,
-    )
-  }
-  return trimmed
-}
-
-/** The message a reply names, else `invalid_argument`; null without a reply. */
-function replyReference(replyTo: string | undefined): { author: string; ts: number } | null {
-  if (replyTo === undefined) return null
-  const reference = parseMessageId(replyTo)
-  if (!reference) {
-    throw new ToolError(
-      "invalid_argument",
-      "reply_to must be a message id, `<account id>:<sent time in ms>`, as a result gives it.",
-    )
-  }
-  return reference
-}
 
 /** The `signal_message_send` tool definition. */
 export const signalMessageSend = defineTool({
@@ -56,18 +27,10 @@ export const signalMessageSend = defineTool({
   class: "add",
   input,
   output,
-  async targets(args, ctx) {
-    if (!ctx.stateDir) return [ANY_TARGET]
-    try {
-      const { label } = await pickLabel(ctx.stateDir, args.account)
-      return [`${label}/${args.chat}`]
-    } catch {
-      return [ANY_TARGET]
-    }
-  },
+  targets: (args, ctx) => labelTargets(ctx, args.account, args.chat),
   async execute(args, ctx): Promise<SendOutput> {
     const text = checkedText(args.text)
-    const replyTo = replyReference(args.reply_to)
+    const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
     const now = Date.now()
     const { paths, prepared } = await withMirror(ctx, args.account, (mirror, me, paths) => ({
       paths,

@@ -1,7 +1,8 @@
 import type { FailureReason, RecipientFailure, SendResults } from "../signal/daemon-results"
 import { isGroupChat, messageId } from "../signal/ids"
 import { formatLocalTime } from "../time"
-import type { SendOutput } from "./schema"
+import type { DeleteOutput, EditOutput, ReactOutput } from "./action-schema"
+import type { NotReached, SendOutput } from "./schema"
 
 const REASONS: Record<FailureReason, string> = {
   unregistered: "not on Signal",
@@ -20,16 +21,11 @@ function reasonOf({ reason, retry_after_seconds }: RecipientFailure): string {
 }
 
 /**
- * The result of a send Signal accepted: the message's id and time, and for a
- * group, or a send with a failure entry, how many recipients it reached and
- * the ones it did not, by account id. Never a number.
+ * For a group, or a request with a failure entry, how many recipients Signal
+ * accepted it for and the ones it did not reach, by account id. Never a number.
  */
-export function sendResult(chat: string, me: string, sent: SendResults): SendOutput {
-  const result: SendOutput = {
-    id: messageId(me, sent.timestamp),
-    chat,
-    time: formatLocalTime(sent.timestamp),
-  }
+export function deliveryResult(chat: string, sent: SendResults): { reached?: number; not_reached?: NotReached[] } {
+  const result: { reached?: number; not_reached?: NotReached[] } = {}
   if (isGroupChat(chat) || sent.failed.length > 0) result.reached = sent.delivered_count
   if (sent.failed.length > 0) {
     result.not_reached = sent.failed.map((failure) => ({
@@ -38,4 +34,46 @@ export function sendResult(chat: string, me: string, sent: SendResults): SendOut
     }))
   }
   return result
+}
+
+/** The result of a send Signal accepted: the message's id and time, and who it reached. */
+export function sendResult(chat: string, me: string, sent: SendResults): SendOutput {
+  return {
+    id: messageId(me, sent.timestamp),
+    chat,
+    time: formatLocalTime(sent.timestamp),
+    ...deliveryResult(chat, sent),
+  }
+}
+
+/** The result of an edit Signal accepted: the edited message's id, when it was edited, and who it reached. */
+export function editResult(chat: string, id: string, sent: SendResults, editsLeft: number): EditOutput {
+  return {
+    id,
+    chat,
+    time: formatLocalTime(sent.timestamp),
+    edits_left: editsLeft,
+    ...deliveryResult(chat, sent),
+  }
+}
+
+/** The result of a delete for everyone Signal accepted: the deleted message's id, and who it reached. */
+export function deleteResult(chat: string, id: string, sent: SendResults): DeleteOutput {
+  return { id, chat, deleted: true, ...deliveryResult(chat, sent) }
+}
+
+/** The result of a reaction Signal accepted: the message, the emoji set or removed, and who it reached. */
+export function reactResult(
+  chat: string,
+  id: string,
+  reaction: { emoji: string; remove: boolean },
+  sent: SendResults,
+): ReactOutput {
+  return {
+    id,
+    chat,
+    emoji: reaction.emoji,
+    ...(reaction.remove ? { removed: true as const } : {}),
+    ...deliveryResult(chat, sent),
+  }
 }

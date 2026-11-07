@@ -200,6 +200,29 @@ without undoing the send. It needs the running sync service. The skill is
 [`signal-sends`](skills/signal-sends/SKILL.md), shown as
 `signal-tools:signal-sends` in Claude Code and `signal-tools:sends` in Hermes.
 
+### Actions (`actions`)
+
+| Tool                    | What it does                                                             | Class          |
+| ----------------------- | ------------------------------------------------------------------------ | -------------- |
+| `signal_message_edit`   | replaces the text of one of the user's own messages                      | overwrite      |
+| `signal_message_delete` | deletes one of the user's own messages for everyone; it cannot be undone | administrative |
+| `signal_message_react`  | sets, replaces or removes the user's emoji reaction on a message         | overwrite      |
+
+The toolset is off by default: the actions change what others have already
+read. Turn it on with `toolsets` or `tools`. Editing and deleting take only the
+user's own messages, within 24 hours of sending, and a message is edited at most
+10 times; only a text message can be edited. A reaction goes to any message, one
+per person, so a new one replaces the user's earlier one. Outcomes follow the
+sends': a result means Signal accepted it, with `reached` and `not_reached` for
+a group, and any other failure after the request went out is `uncertain`: check
+the phone before repeating it. Each is recorded in the mirror as the sync
+service would record it from another device, and a record that fails is listed
+under `errors`. No tool sends read receipts or typing indicators. It needs the
+running sync service. The skill is
+[`signal-actions`](skills/signal-actions/SKILL.md), shown as
+`signal-tools:signal-actions` in Claude Code and `signal-tools:actions` in
+Hermes.
+
 ## Adding a tool
 
 1. Write the spec in `src/core/<domain>/<verb>.ts` with `defineTool`: an ID

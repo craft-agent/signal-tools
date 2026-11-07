@@ -364,6 +364,19 @@ Every entry point takes the same settings:
   never migrates, and leaves a mirror of another version alone. A record that
   fails does not undo the send: the result says the message went out and
   names the failure under `errors`.
+- **Actions change what others have already read**, so they keep to what
+  Signal's own clients allow. Editing and deleting for everyone take only the
+  user's own messages, sent within 24 hours; a message is edited at most 10
+  times. Deleting for everyone is administrative, since it cannot be taken
+  back. A reaction replaces the user's earlier one on that message, so it
+  overwrites.
+- **An action records itself in the mirror** once Signal accepts it, as the
+  sync service would record it from another device, with a failed record
+  under `errors`, as for a send. Its outcome follows the send's: a result
+  means Signal accepted it, and anything that may have gone out is
+  `uncertain`.
+- **No tool sends read receipts or typing indicators.** The phone keeps its
+  notifications, and nobody learns that a tool read a message.
 
 ## Toolsets
 
