@@ -19,7 +19,7 @@ describe("chat read: accounts", () => {
   })
 
   test("account names the label whose mirror is read", async () => {
-    expect((await t.read({ method: "list", account: "default" })).chats).toHaveLength(1)
+    expect((await t.read({ method: "list", account: "default" })).chats).toHaveLength(2)
     expect((await t.failure({ method: "list", account: "Bad/Label" })).code).toBe("invalid_argument")
     expect((await t.failure({ method: "list", account: "other" })).code).toBe("not_found")
   })

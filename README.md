@@ -386,7 +386,7 @@ one `default`), and every command takes `--state-dir` like the tools.
 | `link [--account <label>] [--device-name <n>]` | links this machine as a device of the phone, showing the code to scan; `--show-uri` also prints the address the code stands for |
 | `sync [--account <label>]`                     | runs the sync service in the foreground, logging to standard error, until it is stopped                                         |
 | `service install \| uninstall \| status`       | registers the sync service as a launchd agent (macOS) or a systemd user unit (Linux), removes it, or reports it                 |
-| `remove --account <label> [--yes]`             | uninstalls the service and deletes the label's keys, signal-cli's data and history, after the label is typed back               |
+| `remove --account <label> [--yes]`             | uninstalls the service and deletes the label's keys, signal-cli's data, history and service log, after the label is typed back  |
 
 - **The service records this package's paths**, so run `service install`
   again after updating the package. On macOS its log is

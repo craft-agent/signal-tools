@@ -27,7 +27,7 @@ export type PreparedSend = PreparedChat & {
  * group the user left.
  */
 export function prepareChat(mirror: Mirror, me: string | null, chatId: string, method: string): PreparedChat {
-  const chat = requireChat(mirror, chatId, method)
+  const chat = requireChat(mirror, me, chatId, method)
   if (isLeftGroup(chat)) throw new ToolError("forbidden", LEFT_GROUP_MESSAGE)
   if (me === null) throw new ToolError("upstream_error", OWN_ACCOUNT_UNKNOWN_MESSAGE)
   return { chat, me, noteToSelf: isNoteToSelf(chat.id, me) }

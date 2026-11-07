@@ -3,7 +3,16 @@ import { foldCase } from "../fold"
 import { clampLimit, encodeCursor, fitItems, notACursor, readCursor, type Cuttable } from "../pages"
 import type { Mirror } from "../signal/mirror"
 import { formatLocalTime } from "../time"
-import { CHAT_COLUMNS, chatHeader, chatName, chatNumber, isLeftGroup, personIds, type StoredChat } from "./chat-rows"
+import {
+  CHAT_COLUMNS,
+  chatHeader,
+  chatName,
+  chatNumber,
+  isLeftGroup,
+  ownChat,
+  personIds,
+  type StoredChat,
+} from "./chat-rows"
 import { fingerprint } from "./filter"
 import { messageEntries } from "./message"
 import { cutMessage, dropMetadata, messageTextLength } from "./message-cut"
@@ -36,14 +45,25 @@ function activity(chat: StoredChat): number {
   return chat.last_ts ?? 0
 }
 
-/** Every chat worth listing, newest activity first and by id among equals: those with a message, and every group. */
-function allChats(mirror: Mirror): StoredChat[] {
-  return mirror
+/** Whether `a` comes before `b` in a list: newer activity first, the smaller id among equals. */
+function byActivity(a: StoredChat, b: StoredChat): number {
+  return activity(b) - activity(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+}
+
+/**
+ * Every chat worth listing, newest activity first and by id among equals:
+ * those with a message, every group, and the user's own (Note to Self), which
+ * stands without a row until its first message.
+ */
+function allChats(mirror: Mirror, me: string | null): StoredChat[] {
+  const chats = mirror
     .prepare(
-      `SELECT ${CHAT_COLUMNS} FROM chats WHERE last_ts IS NOT NULL OR kind = 'group'
+      `SELECT ${CHAT_COLUMNS} FROM chats WHERE last_ts IS NOT NULL OR kind = 'group' OR id = ?
        ORDER BY COALESCE(last_ts, 0) DESC, id`,
     )
-    .all() as StoredChat[]
+    .all(me) as StoredChat[]
+  if (me === null || chats.some((chat) => chat.id === me)) return chats
+  return [...chats, ownChat(me)].sort(byActivity)
 }
 
 /** Incoming messages not read yet, by chat. */
@@ -121,7 +141,7 @@ export function listChats(
   if (after && after.filter !== filter) throw notACursor("cursor")
   const people = new People(mirror, me)
   const unread = unreadCounts(mirror)
-  let chats = allChats(mirror)
+  let chats = allChats(mirror, me)
   if (after)
     chats = chats.filter((chat) => activity(chat) < after.ts || (activity(chat) === after.ts && chat.id > after.id))
   if (unreadOnly) chats = chats.filter((chat) => (unread.get(chat.id) ?? 0) > 0)

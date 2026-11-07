@@ -11,8 +11,9 @@ description: "Use when sending a Signal text to a person, a group or Note to Sel
 
 Get the chat id first, from `signal_chat_read` or from `signal_contact_read`
 with `method: "check"`; a chat is an id, never a name or a number. The user's
-own account id is Note to Self. A group the user left is refused. The sync
-service must be running.
+own account id is Note to Self; it is always in the chat list once the sync
+service has run, so that is where to find it. A group the user left is
+refused. The sync service must be running.
 
 Send `text` exactly as the user wants it: surrounding blank space is trimmed,
 nothing else changes, and it is at most 4,000 characters. Never rephrase,

@@ -54,9 +54,15 @@ export function messageReference(id: string): { author: string; ts: number } {
  * view-once message is `forbidden`, since its sender meant its files to be
  * seen once.
  */
-export function findMessageFiles(mirror: Mirror, chatId: string, id: string, now: number): MessageFiles {
+export function findMessageFiles(
+  mirror: Mirror,
+  me: string | null,
+  chatId: string,
+  id: string,
+  now: number,
+): MessageFiles {
   const reference = messageReference(id)
-  const chat = requireChat(mirror, chatId, FILE_SAVE_TOOL_ID)
+  const chat = requireChat(mirror, me, chatId, FILE_SAVE_TOOL_ID)
   const row = mirror
     .prepare(
       "SELECT kind, attachments, expires_in, expire_start, view_once FROM messages WHERE chat = ? AND author = ? AND ts = ?",

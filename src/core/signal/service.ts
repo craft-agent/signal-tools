@@ -1,5 +1,10 @@
 import { ToolError } from "../errors"
-import { installLaunchdService, launchdServiceStatus, uninstallLaunchdService } from "./service-launchd"
+import {
+  installLaunchdService,
+  launchdServiceStatus,
+  removeLaunchdLog,
+  uninstallLaunchdService,
+} from "./service-launchd"
 import { installSystemdService, systemdServiceStatus, uninstallSystemdService } from "./service-systemd"
 import { defaultServiceHost, type ServiceHost, type ServiceSpec, type ServiceStatus } from "./service-types"
 
@@ -46,6 +51,20 @@ export async function uninstallService(
     return uninstallLaunchdService(id, label, host)
   }
   return uninstallSystemdService(id, label, host)
+}
+
+/**
+ * Deletes the sync service's log file for one label, and its directory once
+ * empty. Only the launchd agent writes a log file; elsewhere the journal is
+ * the system's, so nothing is done. Missing logs complete without error.
+ */
+export async function removeServiceLog(
+  id: string,
+  label: string,
+  host: ServiceHost = defaultServiceHost(),
+): Promise<void> {
+  if (host.platform !== "darwin") return
+  return removeLaunchdLog(id, label, host)
 }
 
 /**

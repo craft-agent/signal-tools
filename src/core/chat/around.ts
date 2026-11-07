@@ -39,7 +39,7 @@ export function aroundMessage(
   args: Pick<ChatReadInput, "chat" | "id" | "before_count" | "after_count">,
   now: number,
 ): ChatReadOutput {
-  const chat = requireChat(mirror, args.chat, "around")
+  const chat = requireChat(mirror, me, args.chat, "around")
   if (args.id === undefined) {
     throw new ToolError("invalid_argument", "id is required for around: pass the id of a message.")
   }

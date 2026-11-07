@@ -284,6 +284,12 @@ Every entry point takes the same settings:
   a tool returns it for the user only. The marks and the note that such a
   message is not to be quoted or passed on unless the user asks are fields of
   their own; the text stays as it was sent.
+- **A chat's timer is the one its latest message carries.** Every data message
+  carries the chat's current disappearing timer, so ingest takes the timer
+  from each ordinary message as well as from a timer update, unless an older
+  message arrives after a newer one; the record of a send thus agrees with the
+  chat, since signal-cli applies the chat's stored timer to what it sends. A
+  reaction, an edit, a delete or a receipt never sets it.
 - **Every read opens the mirror read-only and needs no daemon**, so reading
   works while the service is down and can never change what was received.
   The exception is the number check: a number tells nothing of the account

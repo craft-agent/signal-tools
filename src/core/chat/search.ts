@@ -91,7 +91,7 @@ export function searchMessages(
   scan: ScanLimits = SCAN_LIMITS,
 ): ChatReadOutput {
   const words = searchWords(args.query)
-  const chat = optionalChat(mirror, args.chat, "search")
+  const chat = optionalChat(mirror, me, args.chat, "search")
   const limit = clampLimit(args.limit, LIMITS.search, "limit")
   const range = readRange(args)
   const filter = fingerprint([...words].sort(), chat?.id ?? null, range.after ?? null, range.before ?? null)

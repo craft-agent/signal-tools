@@ -3,6 +3,7 @@ import { ALICE, BOB, GROUP_ID, ME, dataFrom, editFrom, groupDataFrom, reactionFr
 import { formatLocalTime } from "../time"
 import { CAROL, GROUP, createChatFixture, type ChatFixture } from "./read.testing"
 
+const DAVE = "55555555-5555-4555-8555-555555555555"
 const T = Date.UTC(2026, 10, 7, 5)
 const MINUTE = 60_000
 const at = (n: number) => T + n * MINUTE
@@ -137,7 +138,7 @@ describe("chat read: search scope and order", () => {
     expect(await found("alpha", { chat: GROUP })).toEqual(["alpha four", "alpha two"])
     expect(await found("alpha", { chat: ALICE })).toEqual(["alpha three", "alpha one"])
     expect(await found("alpha", { chat: CAROL })).toEqual([])
-    const unknown = await t.failure({ method: "search", query: "a", chat: ME })
+    const unknown = await t.failure({ method: "search", query: "a", chat: DAVE })
     expect([unknown.code, unknown.message]).toEqual(["not_found", "No chat with this id in this account's mirror."])
     for (const chat of ["Alice", "+15555550177", "group:short"]) {
       expect((await t.failure({ method: "search", query: "a", chat })).code).toBe("invalid_argument")

@@ -39,6 +39,14 @@ export function findChat(mirror: Mirror, id: string): StoredChat | null {
   return row ?? null
 }
 
+/**
+ * The user's own chat as it stands before its first message: no row yet, no
+ * activity. The first message stored creates the row.
+ */
+export function ownChat(me: string): StoredChat {
+  return { id: me, kind: "person", name: null, number: null, member: 1, expires_in: null, last_ts: null }
+}
+
 /** `chat` as a method's argument: a chat id, else `invalid_argument` (a name or number is never a chat). */
 export function chatIdArgument(chat: string, method: string): string {
   if (!isChatId(chat)) {
@@ -58,21 +66,26 @@ export function requireChatId(chat: string | undefined, method: string): string 
   return chatIdArgument(chat, method)
 }
 
-/** The chat with this id, or `not_found` when this mirror has none. */
-export function existingChat(mirror: Mirror, id: string): StoredChat {
-  const chat = findChat(mirror, id)
+/** The chat with this id, or `not_found` when this mirror has none; the user's own `me` always exists. */
+export function existingChat(mirror: Mirror, me: string | null, id: string): StoredChat {
+  const chat = findChat(mirror, id) ?? (isNoteToSelf(id, me) ? ownChat(id) : null)
   if (!chat) throw new ToolError("not_found", "No chat with this id in this account's mirror.")
   return chat
 }
 
-/** A chat id argument that must be present, valid and in this account's mirror. */
-export function requireChat(mirror: Mirror, chat: string | undefined, method: string): StoredChat {
-  return existingChat(mirror, requireChatId(chat, method))
+/** A chat id argument that must be present, valid and in this account's mirror (see `existingChat`). */
+export function requireChat(mirror: Mirror, me: string | null, chat: string | undefined, method: string): StoredChat {
+  return existingChat(mirror, me, requireChatId(chat, method))
 }
 
 /** `chat` as an optional argument: its stored row, or undefined when absent. */
-export function optionalChat(mirror: Mirror, chat: string | undefined, method: string): StoredChat | undefined {
-  return chat === undefined ? undefined : existingChat(mirror, chatIdArgument(chat, method))
+export function optionalChat(
+  mirror: Mirror,
+  me: string | null,
+  chat: string | undefined,
+  method: string,
+): StoredChat | undefined {
+  return chat === undefined ? undefined : existingChat(mirror, me, chatIdArgument(chat, method))
 }
 
 /** The chats with these ids that this mirror has, by id. */

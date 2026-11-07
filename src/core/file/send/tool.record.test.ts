@@ -3,7 +3,7 @@ import { chmodSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
 import { accepted, SENT } from "../../message/send.testing"
 import { messageId } from "../../signal/ids"
-import { ALICE, ME, messageRow, rowsOf, sentTo } from "../../signal/mirror.testing"
+import { ALICE, ME, dataFrom, messageRow, rowsOf, sentTo } from "../../signal/mirror.testing"
 import { createFileSendFixture, type FileSendFixture } from "./tool.testing"
 
 const NOT_RECORDED = "the message was sent but is not in the mirror yet"
@@ -82,6 +82,12 @@ describe("a send that Signal accepted", () => {
       }),
     )
     expect(stored(SENT)).toEqual(stored(SENT + 1))
+  })
+
+  test("takes the timer from the chat's latest ordinary message, started at the sent time", async () => {
+    t.ingest(dataFrom(ALICE, 5200, { message: "earlier", expiresInSeconds: 3600 }))
+    await t.sendFiles({ chat: ALICE, files: [{ path: t.write("a.txt") }] })
+    expect(stored(SENT)).toMatchObject({ expires_in: 3600, expire_start: SENT })
   })
 
   test("the file's name is the one it was sent under, whatever link it was named by", async () => {

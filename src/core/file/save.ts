@@ -77,8 +77,8 @@ export function createFileSave(host: Partial<FileSaveHost> = {}) {
     },
     async execute(args, ctx): Promise<FileSaveOutput> {
       const now = machine.now()
-      const { message, label, storeDir } = await withMirror(ctx, args.account, (mirror, _me, paths) => ({
-        message: findMessageFiles(mirror, args.chat, args.id, now),
+      const { message, label, storeDir } = await withMirror(ctx, args.account, (mirror, me, paths) => ({
+        message: findMessageFiles(mirror, me, args.chat, args.id, now),
         label: paths.label,
         storeDir: paths.attachments,
       }))

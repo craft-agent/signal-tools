@@ -20,7 +20,9 @@ has not been running, newer messages are missing too; check
 - `list` finds chats, newest activity first. `query` matches part of a name or
   number, `unread` keeps chats with unread messages, `last` adds each chat's
   last message. Use it first to get a chat id: `view` and `around` need one,
-  and `search` takes one to stay in a chat.
+  and `search` takes one to stay in a chat. Note to Self is always listed once
+  the sync service has run, even before its first message; that is how to find
+  its id.
 - `view` reads one chat (`chat`): the newest messages between `after` and
   `before`, oldest first. `next` continues with older ones.
 - `search` finds messages by the words in `query`, newest first, in one `chat`
