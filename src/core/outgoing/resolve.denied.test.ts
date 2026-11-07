@@ -65,6 +65,14 @@ describe("resolveOutgoing and key or settings folders", () => {
     expect(error.message).not.toContain(".ssh")
   })
 
+  test("names the key folder, not send_dirs, for a file outside every root", async () => {
+    const file = box.write("elsewhere/.ssh/config")
+    const error = await toolFailure(() => resolveIn(file))
+    expect(error.code).toBe("forbidden")
+    expect(error.message).toBe(`${JSON.stringify(file)} is inside a key or settings folder.`)
+    expect(error.message).not.toContain("send_dirs")
+  })
+
   test("allows folders that only look similar, and the .registry folder that is no general rule", async () => {
     box.write("work/.registry/state.txt")
     expect((await resolveIn(".registry/state.txt")).name).toBe("state.txt")

@@ -54,16 +54,19 @@ async function realPathOf(path: string, shown: string): Promise<string> {
  * of a hard link may name any of its names (macOS does). Its real path must
  * then:
  *
- * - lie inside one of `roots` (by path components, not by string prefix) and
- *   inside none of `forbidden`, however a link led there, else `forbidden`
- *   saying the file is outside the directories files may be sent from and
- *   that a directory is added with `send_dirs`;
+ * - lie inside none of `forbidden`, however a link led there, else `forbidden`;
  * - have no component, from the file system root down, that is a key or
  *   settings folder (`isDeniedFolder`; the message does not say which, as a
  *   link may have led through a folder the caller never named), and a name that does not look like a
  *   key or a secret (`isDeniedName`), else `forbidden`;
  * - not lie in a place below `home` that holds browser profiles, password
- *   managers, chat clients or backups (`deniedHomePlace`), else `forbidden`.
+ *   managers, chat clients or backups (`deniedHomePlace`), else `forbidden`;
+ * - lie inside one of `roots` (by path components, not by string prefix),
+ *   else `forbidden` saying the file is outside the directories files may be
+ *   sent from and that a directory is added with `send_dirs`.
+ *
+ * Containment comes last on purpose: its advice is to add a directory, which
+ * must never be given for a folder that can never be a source.
  *
  * A path that does not exist is `not_found`. Messages name only `path`, as it
  * was given. `identity` lets the caller check, on the descriptor it opens,
@@ -86,13 +89,6 @@ export async function resolveOutgoing(
   if ((await containing(real, forbidden)) !== undefined) {
     throw new ToolError("forbidden", `${shown} is inside a directory that is never a source of files.`)
   }
-  const root = await containing(real, roots)
-  if (root === undefined) {
-    throw new ToolError(
-      "forbidden",
-      `${shown} is outside the directories files may be sent from (the working directory and the send_dirs setting); add the directory it is in to send_dirs.`,
-    )
-  }
   if (real.split(sep).some((component) => component !== "" && isDeniedFolder(component))) {
     throw new ToolError("forbidden", `${shown} is inside a key or settings folder.`)
   }
@@ -103,6 +99,13 @@ export async function resolveOutgoing(
   const place = deniedHomePlace(real, await realpath(home).catch(() => home))
   if (place !== undefined) {
     throw new ToolError("forbidden", `${shown} is inside a place that holds logins, cookies or messages (${place}).`)
+  }
+  const root = await containing(real, roots)
+  if (root === undefined) {
+    throw new ToolError(
+      "forbidden",
+      `${shown} is outside the directories files may be sent from (the working directory and the send_dirs setting); add the directory it is in to send_dirs.`,
+    )
   }
   return { realPath: real, name, root, identity: identityOf(stats) }
 }
