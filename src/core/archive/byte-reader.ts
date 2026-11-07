@@ -6,22 +6,25 @@ const NOTHING = new Uint8Array(0)
  * Reads a stream of chunks as exact byte counts, which is how a tar is laid
  * out: headers of 512 bytes, then data of the size a header says, then
  * padding. `ended` makes the refusal for a stream that stops before the count
- * asked for.
+ * asked for. `signal` is checked before each chunk is taken from the stream.
  */
 export class ByteReader {
   readonly #iterator: AsyncIterator<Uint8Array>
   readonly #ended: () => ArchiveRefused
+  readonly #signal: AbortSignal | undefined
   #chunk: Uint8Array = NOTHING
   #offset = 0
 
-  constructor(source: AsyncIterable<Uint8Array>, ended: () => ArchiveRefused) {
+  constructor(source: AsyncIterable<Uint8Array>, ended: () => ArchiveRefused, signal?: AbortSignal) {
     this.#iterator = source[Symbol.asyncIterator]()
     this.#ended = ended
+    this.#signal = signal
   }
 
   /** Makes some unread bytes available; `false` at the end of the stream. */
   async #fill(): Promise<boolean> {
     while (this.#offset >= this.#chunk.length) {
+      this.#signal?.throwIfAborted()
       const next = await this.#iterator.next()
       if (next.done) return false
       this.#chunk = next.value

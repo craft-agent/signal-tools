@@ -20,6 +20,11 @@ const ENDS_IN_DOT_OR_SPACE = /[. ]$/
  */
 const RESERVED_DEVICE_NAME = /^(?:con|prn|aux|nul|conin\$|conout\$|(?:com|lpt)[0-9¹²³])$/i
 
+/** Whether a path component is a name Windows reserves for a device, with or without an extension. */
+export function isReservedDeviceName(component: string): boolean {
+  return RESERVED_DEVICE_NAME.test(component.split(".")[0]!.trimEnd())
+}
+
 const NOT_PLAIN = "a path that is not a plain relative one"
 
 /**
@@ -42,7 +47,7 @@ export function plainPathProblem(name: string, dir: boolean): string | undefined
   for (const component of components) {
     if (NOTHING_BUT_DOTS_AND_SPACES.test(component)) return `${NOT_PLAIN} (it has an empty or dotted component)`
     if (ENDS_IN_DOT_OR_SPACE.test(component)) return `${NOT_PLAIN} (a component ends in a dot or a space)`
-    if (RESERVED_DEVICE_NAME.test(component.split(".")[0]!.trimEnd())) {
+    if (isReservedDeviceName(component)) {
       return `${NOT_PLAIN} (a component is a name Windows reserves for a device)`
     }
     if (Buffer.byteLength(component) > MAX_COMPONENT_BYTES) {

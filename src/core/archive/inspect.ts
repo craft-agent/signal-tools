@@ -30,12 +30,14 @@ const FORMAT_LABELS: Record<ArchiveFormat, string> = { zip: "zip", tar: "tar", t
  * (also in other case or Unicode form), a file where a directory is, a damaged
  * archive, or more entries or bytes than the limits allow, counted from what
  * is read. An archive with nothing in it is accepted. The rules judge the
- * names as the archive wrote them; the listing shows them cleaned.
+ * names as the archive wrote them; the listing shows them cleaned. `signal`
+ * stops the reading with its `AbortError`, checked before each chunk of data.
  */
 export async function inspectArchive(
   path: string,
   format: ArchiveFormat,
   limits: ArchiveLimits = DEFAULT_LIMITS,
+  signal?: AbortSignal,
 ): Promise<ArchiveListing> {
   const entries: ListedEntry[] = []
   const paths = new PathRegistry()
@@ -63,6 +65,7 @@ export async function inspectArchive(
       entries.push(entry.dir ? { name: shown, size: entry.size, dir: true } : { name: shown, size: entry.size })
     },
     limits,
+    signal,
   )
 
   return { format, entries, files, total_size: totalSize }

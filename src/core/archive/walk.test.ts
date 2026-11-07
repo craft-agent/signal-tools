@@ -1,5 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test"
+import { symlinkSync } from "node:fs"
+import { dirname, join } from "node:path"
 import { createFixtures, refusal } from "./archive.testing"
+import { inspectArchive } from "./inspect"
 import { DEFAULT_LIMITS } from "./limits"
 import { buildTar } from "./tar.testing"
 import { walkArchive } from "./walk"
@@ -87,4 +90,64 @@ describe.each([
   test("fails for a file that is not there", async () => {
     await expect(walkArchive("/nonexistent/archive", format, async () => {})).rejects.toThrow()
   })
+})
+
+describe.each([
+  ["zip", zipPath],
+  ["tar", tarPath],
+] as const)("the input of walking a %s", (format, make) => {
+  test("a link at the path is refused, not followed", async () => {
+    const real = make()
+    const link = join(dirname(real), `link-to-${format}`)
+    symlinkSync(real, link)
+    const error = await refusal(() => walkArchive(link, format, async () => {}))
+    expect(error.reason).toBe("the archive is a link, not a file")
+    await expect(inspectArchive(link, format)).rejects.toMatchObject({ reason: "the archive is a link, not a file" })
+  })
+
+  test("a dangling link is refused too", async () => {
+    const link = join(dirname(make()), `dangling-${format}`)
+    symlinkSync(join(dirname(link), "nowhere"), link)
+    await expect(walkArchive(link, format, async () => {})).rejects.toThrow()
+  })
+
+  test("something that is not a regular file is refused", async () => {
+    const error = await refusal(() => walkArchive(dirname(make()), format, async () => {}))
+    expect(error.reason).toBe("the archive is not a regular file")
+  })
+
+  test("a cancellation stops the walk before the next chunk of data is read", async () => {
+    let checks = 0
+    const signal = { throwIfAborted: () => void (++checks > 3 && abort()) } as unknown as AbortSignal
+    const read: number[] = []
+    const stopped = walkArchive(
+      make(),
+      format,
+      async (entry, data) => {
+        if (data !== null) for await (const chunk of data) read.push(chunk.length)
+        expect(entry.name).toBeDefined()
+      },
+      DEFAULT_LIMITS,
+      signal,
+    )
+    await expect(stopped).rejects.toMatchObject({ name: "AbortError" })
+    expect(read.reduce((sum, length) => sum + length, 0)).toBeLessThan(100_005)
+  })
+
+  test("a signal that never says so changes nothing", async () => {
+    const signal = new AbortController().signal
+    const names: string[] = []
+    await walkArchive(make(), format, async (entry) => void names.push(entry.name), DEFAULT_LIMITS, signal)
+    expect(names).toEqual(["dir/", "dir/a.txt", "dir/b.txt", "c.txt"])
+  })
+})
+
+function abort(): never {
+  throw Object.assign(new Error("The operation was aborted"), { name: "AbortError" })
+}
+
+test("inspecting stops at a cancellation as well", async () => {
+  let checks = 0
+  const signal = { throwIfAborted: () => void (++checks > 2 && abort()) } as unknown as AbortSignal
+  await expect(inspectArchive(zipPath(), "zip", DEFAULT_LIMITS, signal)).rejects.toMatchObject({ name: "AbortError" })
 })

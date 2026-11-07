@@ -1,4 +1,5 @@
-import { open } from "node:fs/promises"
+import { constants } from "node:fs"
+import { open, type FileHandle } from "node:fs/promises"
 import { createGunzip } from "node:zlib"
 import { ByteBudget } from "./budget"
 import { ByteReader } from "./byte-reader"
@@ -21,10 +22,13 @@ export type EntryData = AsyncIterable<Uint8Array>
 export type EntryHandler = (entry: ArchiveEntry, data: EntryData | null) => Promise<void>
 
 /** Hands out a generator's values to one reader, whose early stop leaves the rest for `walkArchive` to drain. */
-function shared(data: AsyncGenerator<Uint8Array>): EntryData {
+function shared(data: AsyncGenerator<Uint8Array>, signal?: AbortSignal): EntryData {
   return {
     [Symbol.asyncIterator]: () => ({
-      next: () => data.next(),
+      next: () => {
+        signal?.throwIfAborted()
+        return data.next()
+      },
       return: async (): Promise<IteratorReturnResult<undefined>> => ({ done: true, value: undefined }),
     }),
   }
@@ -44,6 +48,22 @@ async function* capped(source: AsyncIterable<Uint8Array>, cap: number): AsyncGen
   }
 }
 
+/** Opens the archive for reading, refusing a link at its path and anything that is not a regular file. */
+async function openRegularFile(path: string): Promise<FileHandle> {
+  let file: FileHandle
+  try {
+    file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ELOOP") throw new ArchiveRefused("the archive is a link, not a file")
+    throw error
+  }
+  if (!(await file.stat()).isFile()) {
+    await file.close()
+    throw new ArchiveRefused("the archive is not a regular file")
+  }
+  return file
+}
+
 /**
  * Reads an archive's entries in order and gives each to `onEntry` with its
  * data once, counting every byte as it comes: the entry count, each entry's
@@ -52,14 +72,20 @@ async function* capped(source: AsyncIterable<Uint8Array>, cap: number): AsyncGen
  * before any of it is read. An entry's data is drained and checked after the
  * handler returns, whether or not the handler read it. A refusal is an
  * `ArchiveRefused`; a handler's own error stops the walk and passes through.
+ *
+ * The input is opened without following a link at its path and must be a
+ * regular file (checked on the open file, not the path), so what is read is
+ * what the caller put there. `signal` is checked before each chunk of data is
+ * read and each entry is started, and stops the walk with its `AbortError`.
  */
 export async function walkArchive(
   path: string,
   format: ArchiveFormat,
   onEntry: EntryHandler,
   limits: ArchiveLimits = DEFAULT_LIMITS,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const file = await open(path, "r")
+  const file = await openRegularFile(path)
   let reader: ByteReader | undefined
   try {
     const { size } = await file.stat()
@@ -76,14 +102,18 @@ export async function walkArchive(
         format === "tgz"
           ? capped(inflate(bytes, createGunzip(), damaged), limits.maxTotalSize + limits.maxMetadata)
           : bytes
-      reader = new ByteReader(stream, () => damaged("it ends early"))
+      reader = new ByteReader(stream, () => damaged("it ends early"), signal)
       entries = tarEntries(reader, limits, budget, ByteBudget.forMetadata(limits.maxMetadata))
     }
 
     for await (const { entry, data } of entries) {
       try {
-        await onEntry(entry, data && shared(data))
-        if (data) for await (const _chunk of data) continue
+        signal?.throwIfAborted()
+        await onEntry(entry, data && shared(data, signal))
+        while (data) {
+          signal?.throwIfAborted()
+          if ((await data.next()).done) break
+        }
       } finally {
         await data?.return(undefined)
       }
