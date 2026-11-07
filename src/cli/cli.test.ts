@@ -157,6 +157,23 @@ describe("run", () => {
     expect(run.code).toBe(EXIT_OK)
     expect(capturedStateDir).toBe("/custom/state")
   })
+
+  test("passes downloadDir from parsed settings to execute", async () => {
+    let capturedDownloadDir: string | undefined
+    const checkTool = {
+      ...specs[0]!,
+      id: "demo_thing_read",
+      async execute(_args: unknown, ctx: { downloadDir?: string }) {
+        capturedDownloadDir = ctx.downloadDir
+        return { tool: "demo_thing_read", cwd: "/x" }
+      },
+    }
+    const run = await cli(["run", "demo_thing_read", "--cwd", "/x", "--download-dir", "/custom/downloads"], "", {
+      specs: [checkTool as any],
+    })
+    expect(run.code).toBe(EXIT_OK)
+    expect(capturedDownloadDir).toBe("/custom/downloads")
+  })
 })
 
 describe("usage", () => {
