@@ -8,6 +8,7 @@ provides_tools:
   - signal_chat_read
   - signal_contact_read
   - signal_file_save
+  - signal_message_edit
   - signal_message_send
 provides_hooks:
   - pre_tool_call
