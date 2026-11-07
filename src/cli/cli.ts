@@ -147,6 +147,7 @@ async function runTool(command: Extract<Command, { name: "run" }>, io: CliIo): P
       ownDir: io.ownDir,
       stateDir: command.stateDir,
       downloadDir: command.downloadDir,
+      programName: PROJECT.name,
       signal: io.signal,
     })
     writeJson(io, { result })
@@ -168,6 +169,7 @@ async function targetOf(command: Extract<Command, { name: "target" }>, io: CliIo
       ownDir: io.ownDir,
       stateDir: command.stateDir,
       downloadDir: command.downloadDir,
+      programName: PROJECT.name,
       signal: io.signal,
     })
     writeJson(io, { resources })

@@ -2,6 +2,7 @@ import { invoke, isToolError, selectTools, type ToolContext, type ToolSpec } fro
 import { ANY_RESOURCE } from "../entry/permission"
 import { PROJECT_PROFILE, type EntryProfile } from "../entry/profile"
 import { settingsFromOptions, toolDirectories, type ToolDirectories } from "../entry/settings"
+import { PROJECT } from "../project"
 import type { PluginOptions } from "./types"
 
 /** What a plugin takes from its surroundings; each has a default, and a test supplies its own. */
@@ -39,7 +40,7 @@ export function needsPermission(spec: Pick<ToolSpec, "class">): boolean {
 }
 
 /** The directories a plugin passes to every call, resolved from its settings. */
-export type PluginDirectories = ToolDirectories
+export type PluginDirectories = ToolDirectories & { programName: string }
 
 /** The tools and resolved directories the plugin options (and the environment behind them) select from `specs`. */
 export function selectedTools(
@@ -51,7 +52,7 @@ export function selectedTools(
   const settings = settingsFromOptions(options, env, profile)
   return {
     tools: selectTools(specs, settings, profile.toolsets),
-    directories: toolDirectories(settings),
+    directories: { ...toolDirectories(settings), programName: PROJECT.name },
   }
 }
 

@@ -174,6 +174,20 @@ describe("run", () => {
     expect(run.code).toBe(EXIT_OK)
     expect(capturedDownloadDir).toBe("/custom/downloads")
   })
+
+  test("names the program in ctx.programName", async () => {
+    let capturedProgram: string | undefined
+    const checkTool = {
+      ...specs[0]!,
+      id: "demo_thing_read",
+      async execute(_args: unknown, ctx: { programName?: string }) {
+        capturedProgram = ctx.programName
+        return { tool: "demo_thing_read", cwd: "/x" }
+      },
+    }
+    await cli(["run", "demo_thing_read", "--cwd", "/x"], "", { specs: [checkTool as any] })
+    expect(capturedProgram).toBe("signal-tools")
+  })
 })
 
 describe("usage", () => {

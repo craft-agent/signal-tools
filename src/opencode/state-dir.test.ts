@@ -157,6 +157,31 @@ describe("OpenCode state_dir setting", () => {
       }
     }
 
+    test("names the program in the context of both calls", async () => {
+      const programs: Array<string | undefined> = []
+      const spec = defineTool({
+        id: "demo_program_tool",
+        title: "Program Tool",
+        description: "Program Tool",
+        toolset: "alpha",
+        class: "add",
+        input: z.object({}),
+        output: z.object({ ok: z.boolean() }),
+        async targets(_args, ctx) {
+          programs.push(ctx.programName)
+          return ["target-resource"]
+        },
+        async execute(_args, ctx) {
+          programs.push(ctx.programName)
+          return { ok: true }
+        },
+      })
+      const tools = new Map<string, V2Tool>()
+      await createV2Setup([spec], { profile: PROFILE })(v2Context({}, tools))
+      await tools.get("demo_program_tool")!.execute({}, { sessionID: SESSION_ID, signal: new AbortController().signal })
+      expect(programs).toEqual(["signal-tools", "signal-tools"])
+    })
+
     test("passes downloadDir from options into permissionResources and runTool", async () => {
       const recorder: { target?: string; execute?: string } = {}
       const tools = new Map<string, V2Tool>()

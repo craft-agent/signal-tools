@@ -177,4 +177,11 @@ describe("calls", () => {
     await call(client, "demo_thing_create", { count: 1 })
     expect(calls[0]?.ctx.downloadDir).toBe("/custom/downloads")
   })
+
+  test("names the program in ctx.programName", async () => {
+    const calls: Call[] = []
+    const { client } = await connect([tool("demo_thing_create", "alpha", "add", calls)], settings())
+    await call(client, "demo_thing_create", { count: 1 })
+    expect(calls[0]?.ctx.programName).toBe("signal-tools")
+  })
 })
