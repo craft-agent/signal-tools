@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdirSync } from "node:fs"
-import { ALICE, ME } from "../signal/mirror.testing"
+import { messageId } from "../signal/ids"
 import { labelPaths } from "../signal/labels"
+import { ALICE, ME } from "../signal/mirror.testing"
 import { writeTargets } from "../targets"
 import { annotations, toolMeta, REQUIRES_USER_INTERACTION } from "../tool"
 import { createActionFixture, OWN, type ActionFixture } from "./action.testing"
 import { signalMessageDelete } from "./delete"
 import { signalMessageEdit } from "./edit"
-import { messageId } from "../signal/ids"
+import { signalMessageReact } from "./react"
 
 const ID = messageId(ME, OWN)
 
@@ -24,6 +25,7 @@ afterEach(async () => {
 describe.each([
   ["signal_message_edit", signalMessageEdit, { text: "x" }],
   ["signal_message_delete", signalMessageDelete, {}],
+  ["signal_message_react", signalMessageReact, { emoji: "👍" }],
 ] as const)("the targets of %s", (_id, tool, extra) => {
   const targets = (args: Record<string, unknown>, stateDir = t.stateDir) =>
     writeTargets(tool, { ...extra, ...args }, { cwd: stateDir, stateDir })
@@ -54,6 +56,16 @@ describe.each([
 })
 
 describe("the write classes", () => {
+  test("the reaction overwrites, in the actions toolset, as it replaces the user's earlier one", () => {
+    expect(signalMessageReact).toMatchObject({ id: "signal_message_react", toolset: "actions", class: "overwrite" })
+    expect(annotations(signalMessageReact)).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+    })
+    expect(toolMeta(signalMessageReact)).toBeUndefined()
+  })
+
   test("the edit overwrites, in the actions toolset", () => {
     expect(signalMessageEdit).toMatchObject({ id: "signal_message_edit", toolset: "actions", class: "overwrite" })
     expect(annotations(signalMessageEdit)).toMatchObject({
