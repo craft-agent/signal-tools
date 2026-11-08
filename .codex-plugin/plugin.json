@@ -23,7 +23,8 @@
         "SIGNAL_TOOLS_CONFIRM",
         "SIGNAL_TOOLS_STATE_DIR",
         "SIGNAL_TOOLS_DOWNLOAD_DIR",
-        "SIGNAL_TOOLS_SEND_DIRS"
+        "SIGNAL_TOOLS_SEND_DIRS",
+        "XDG_STATE_HOME"
       ]
     }
   }

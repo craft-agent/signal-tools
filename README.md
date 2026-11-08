@@ -326,7 +326,8 @@ Lists are comma-separated in a flag or a variable. Where each harness reads them
   environment the harness runs in.
 - **Codex** passes a plugin's MCP server only a few basic variables (such as
   `PATH` and `HOME`) and those the plugin's manifest names, which are the
-  variables above: set them in the environment Codex runs in. A variable the
+  variables above and `XDG_STATE_HOME`, from which the state directory's
+  default comes: set them in the environment Codex runs in. A variable the
   tools read besides the settings belongs in `toolVariables` in
   `src/project.ts`; `pnpm run manifests` adds it to the manifest after the
   settings' variables. To pass flags, or to give the server a variable the
@@ -339,7 +340,7 @@ Lists are comma-separated in a flag or a variable. Where each harness reads them
   [mcp_servers.signal-tools]
   command = "npx"
   args = ["-y", "@craftsamo/signal-tools@<version>", "--read-only"]
-  env_vars = ["SIGNAL_TOOLS_STATE_DIR"]
+  env_vars = ["SIGNAL_TOOLS_STATE_DIR", "XDG_STATE_HOME"]
   ```
 
 ### Accounts and the sync service
