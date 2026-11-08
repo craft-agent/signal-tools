@@ -1,6 +1,6 @@
 {
   "name": "signal-tools",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Signal tools for coding agents: chats, messages, contacts, received files and sends.",
   "author": {
     "name": "craftsamo",
