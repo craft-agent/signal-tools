@@ -17,7 +17,7 @@ import { defineTool, StepErrors } from "../../tool"
 import { FILE_SEND_TOOL_ID } from "../constants"
 import { FILE_WORDS } from "../words"
 import { contentTypeOf } from "./content-types"
-import { describeFileSend } from "./describe"
+import { createFileSendDescriber } from "./describe"
 import { openCallFolder, removeCallFolder, sweepOutbox } from "./outbox"
 import { resolveFiles, type ResolvedFile } from "./resolve-files"
 import { input, output, type FileSendOutput } from "./schema"
@@ -93,7 +93,7 @@ export function createFileSend(limits: Partial<FileSendLimits> = {}) {
     intent: FILE_WORDS.sendIntent,
     toolset: "files",
     class: "add",
-    describe: describeFileSend,
+    describe: createFileSendDescriber(maxTotalBytes),
     input,
     output,
     async targets(args, ctx) {

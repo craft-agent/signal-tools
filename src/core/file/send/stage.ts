@@ -27,6 +27,29 @@ function describeBytes(bytes: number): string {
   return bytes % MIB === 0 ? `${bytes / MIB} MiB` : `${bytes} bytes`
 }
 
+/** Refuses, as `invalid_argument`, when `bytes` more would take the send past its limit; counts nothing. */
+export function assertRoom(budget: ByteBudget, bytes: number): void {
+  if (budget.used + bytes > budget.limit) {
+    throw new ToolError(
+      "invalid_argument",
+      `The files together are over ${describeBytes(budget.limit)}, which is the most a send takes; send fewer or smaller files.`,
+    )
+  }
+}
+
+/** Counts `bytes` against the budget, refusing as `assertRoom` does when they take it past its limit. */
+export function chargeBudget(budget: ByteBudget, bytes: number): void {
+  budget.used += bytes
+  assertRoom(budget, 0)
+}
+
+/** Refuses with `stale` when the caller gave a SHA-256 for the file and it is not `sha256`. */
+export function assertApproved(shown: string, expected: string | undefined, sha256: string): void {
+  if (expected !== undefined && expected.toLowerCase() !== sha256) {
+    throw new ToolError("stale", `${shown} is not the file that was approved: its SHA-256 differs.`)
+  }
+}
+
 /**
  * Opens the file that was resolved; a link or nothing at its real path any
  * more means it was swapped since. The open does not block, so a FIFO put in
@@ -75,13 +98,7 @@ export async function stageFile(
         source,
         target,
         (chunk) => {
-          budget.used += chunk.length
-          if (budget.used > budget.limit) {
-            throw new ToolError(
-              "invalid_argument",
-              `The files together are over ${describeBytes(budget.limit)}, which is the most a send takes; send fewer or smaller files.`,
-            )
-          }
+          chargeBudget(budget, chunk.length)
           hash.update(chunk)
         },
         signal,
@@ -90,9 +107,7 @@ export async function stageFile(
       await target.close()
     }
     const sha256 = hash.digest("hex")
-    if (expected !== undefined && expected.toLowerCase() !== sha256) {
-      throw new ToolError("stale", `${shown} is not the file that was approved: its SHA-256 differs.`)
-    }
+    assertApproved(shown, expected, sha256)
     return { path, name: resolved.name, size, sha256 }
   } finally {
     await source.close()

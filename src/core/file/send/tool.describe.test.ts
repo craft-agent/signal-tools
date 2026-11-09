@@ -10,7 +10,7 @@ import { MESSAGE_WORDS } from "../../message/words"
 import { messageId } from "../../signal/ids"
 import { ALICE, GROUP_ID, ME } from "../../signal/mirror.testing"
 import { FILE_WORDS } from "../words"
-import { signalFileSend } from "./tool"
+import { createFileSend, signalFileSend } from "./tool"
 import { createFileSendFixture, type FileSendFixture } from "./tool.testing"
 
 let t: FileSendFixture
@@ -59,7 +59,11 @@ describe("several files to a group", () => {
         { label: "Files", value: { text: MESSAGE_WORDS.filesCount, values: { count: 2 } } },
         { label: "Size", value: { text: "{bytes} bytes", values: { bytes: 8 } } },
       ],
-      pins: { [`sha256:${first}`]: sha256Of("abc"), [`sha256:${second}`]: sha256Of("defgh") },
+      pins: {
+        members: expect.stringMatching(/^[0-9a-f]{64}$/),
+        [`sha256:${first}`]: sha256Of("abc"),
+        [`sha256:${second}`]: sha256Of("defgh"),
+      },
     })
   })
 })
@@ -111,6 +115,23 @@ describe("a call that would be refused", () => {
     } finally {
       rmSync(outside, { recursive: true, force: true })
     }
+  })
+
+  test("a sha256 that does not match the file has no description, in any case when it does", async () => {
+    t.write("a.txt", "x")
+    expect(await describeCall({ chat: ALICE, files: [{ path: "a.txt", sha256: "0".repeat(64) }] })).toBeUndefined()
+    const matching = sha256Of("x").toUpperCase()
+    expect(await describeCall({ chat: ALICE, files: [{ path: "a.txt", sha256: matching }] })).toBeDefined()
+  })
+
+  test("files over the size limit have no description", async () => {
+    t.write("a.txt", "x".repeat(60))
+    t.write("b.txt", "y".repeat(60))
+    const small = createFileSend({ maxTotalBytes: 100 })
+    const describeWith = (files: { path: string }[]) =>
+      callDescription(small, { chat: ALICE, files }, { cwd: t.work, stateDir: t.stateDir })
+    expect(await describeWith([{ path: "a.txt" }])).toBeDefined()
+    expect(await describeWith([{ path: "a.txt" }, { path: "b.txt" }])).toBeUndefined()
   })
 
   test.each([
