@@ -17,6 +17,11 @@ describe("the registry", () => {
     const stray = ALL_TOOLS.filter((spec) => !PROJECT.toolsets.includes(spec.toolset)).map((spec) => spec.id)
     expect(stray).toEqual([])
   })
+
+  test("every write tool states its intent and describes its call", () => {
+    const writes = ALL_TOOLS.filter((spec) => spec.class !== "read")
+    expect(writes.filter((spec) => spec.intent === undefined || !spec.describe).map((spec) => spec.id)).toEqual([])
+  })
 })
 
 describe("the package's toolsets", () => {
