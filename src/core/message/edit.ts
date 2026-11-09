@@ -5,12 +5,14 @@ import { editInput, editOutput, type EditOutput } from "./action-schema"
 import { checkedText, messageReference } from "./arguments"
 import { MAX_EDITS, MAX_TEXT_CHARACTERS, MESSAGE_EDIT_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
+import { chatFacts, chatHeadline, chatSubject, membersFacts, writtenFact } from "./describe"
 import { prepareEdit } from "./edit-prepare"
 import { prepareChat } from "./prepare"
 import { quoteParams } from "./quote"
 import { recordEdit } from "./record-action"
 import { editResult } from "./result"
 import { labelTargets } from "./targets"
+import { MESSAGE_WORDS } from "./words"
 
 /** The `signal_message_edit` tool definition. */
 export const signalMessageEdit = defineTool({
@@ -26,11 +28,26 @@ export const signalMessageEdit = defineTool({
     "A failure `uncertain` means the edit may have gone out: check the chat on the phone, never repeat it blindly.",
     "An edit is recorded in the local mirror, which keeps the earlier versions; `errors.record` says when that failed although the edit was sent.",
   ].join(" "),
+  intent: MESSAGE_WORDS.editIntent,
   toolset: "actions",
   class: "overwrite",
   input: editInput,
   output: editOutput,
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
+  async describe(args, ctx) {
+    const text = checkedText(args.text)
+    const reference = messageReference(args.id, "id")
+    return withMirror(ctx, args.account, (mirror, me) => {
+      const prepared = prepareChat(mirror, me, args.chat, "edit")
+      const edit = prepareEdit(mirror, prepared, reference, text, Date.now())
+      const subject = chatSubject(mirror, prepared)
+      return {
+        headline: chatHeadline(subject, MESSAGE_WORDS.editHeadline, MESSAGE_WORDS.editHeadlineNote),
+        facts: [...chatFacts(subject), writtenFact(MESSAGE_WORDS.editCurrent, edit.body), ...membersFacts(subject)],
+        text: { label: MESSAGE_WORDS.editText, body: text },
+      }
+    })
+  },
   async execute(args, ctx): Promise<EditOutput> {
     const text = checkedText(args.text)
     const reference = messageReference(args.id, "id")

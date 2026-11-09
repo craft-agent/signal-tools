@@ -19,6 +19,11 @@ export const MESSAGE_WORDS = {
   sendHeadlineNote: "About to send a message to Note to Self",
   replyTo: "Reply to",
   sendText: "Message text",
+  editIntent: "About to edit a message",
+  editHeadline: "About to edit your message in {chat}",
+  editHeadlineNote: "About to edit your message in Note to Self",
+  editCurrent: "Current",
+  editText: "New text",
 } as const
 
 /** The translations of `MESSAGE_WORDS` and of the four message tools' titles. */
@@ -41,6 +46,11 @@ export const MESSAGE_TRANSLATIONS: Translations = {
     [MESSAGE_WORDS.sendHeadlineNote]: "自分用メモにメッセージを送信しようとしています",
     [MESSAGE_WORDS.replyTo]: "返信先",
     [MESSAGE_WORDS.sendText]: "メッセージの本文",
+    [MESSAGE_WORDS.editIntent]: "メッセージを編集しようとしています",
+    [MESSAGE_WORDS.editHeadline]: "{chat} の自分のメッセージを編集しようとしています",
+    [MESSAGE_WORDS.editHeadlineNote]: "自分用メモのメッセージを編集しようとしています",
+    [MESSAGE_WORDS.editCurrent]: "現在の本文",
+    [MESSAGE_WORDS.editText]: "新しい本文",
     "Send a message": "メッセージを送信する",
     "Edit a message": "メッセージを編集する",
     "React to a message": "メッセージにリアクションする",
