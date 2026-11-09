@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { templatePlaceholders } from "./core/describe"
 import { FACT_TRANSLATIONS } from "./core/facts"
+import { FILE_WORDS } from "./core/file/words"
 import { MESSAGE_WORDS } from "./core/message/words"
 import { translator } from "./core/words"
 import { ALL_TOOLS } from "./tools"
@@ -12,7 +13,12 @@ const toJapanese = translator(ALL_TRANSLATIONS, "ja")
 /** Every English word the package writes: the tools' titles and intents, the description words and the shared facts' words. */
 function packageWords(): string[] {
   const toolWords = ALL_TOOLS.flatMap((tool) => (tool.intent === undefined ? [tool.title] : [tool.title, tool.intent]))
-  return [...toolWords, ...Object.values(MESSAGE_WORDS), ...Object.keys(FACT_TRANSLATIONS.ja!)]
+  return [
+    ...toolWords,
+    ...Object.values(MESSAGE_WORDS),
+    ...Object.values(FILE_WORDS),
+    ...Object.keys(FACT_TRANSLATIONS.ja!),
+  ]
 }
 
 describe("ALL_TRANSLATIONS", () => {

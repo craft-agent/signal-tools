@@ -33,7 +33,7 @@ function describeBytes(bytes: number): string {
  * its place fails the check on the descriptor at once instead of waiting for a
  * writer; a regular file reads as it always does.
  */
-async function openResolved(resolved: ResolvedOutgoing, shown: string): Promise<FileHandle> {
+export async function openResolved(resolved: ResolvedOutgoing, shown: string): Promise<FileHandle> {
   try {
     return await openForRead(resolved.realPath, constants.O_NONBLOCK)
   } catch (error) {

@@ -64,5 +64,8 @@ export const output = z.strictObject({
   errors: recordErrors("the files were sent"),
 })
 
-/** What the tool returns. */
+/** The arguments of `signal_file_send`, parsed. */
+export type FileSendArguments = z.output<typeof input>
+
+/** What the `signal_file_send` tool returns on success. */
 export type FileSendOutput = z.infer<typeof output>
