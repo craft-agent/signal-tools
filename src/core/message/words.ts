@@ -24,6 +24,10 @@ export const MESSAGE_WORDS = {
   editHeadlineNote: "About to edit your message in Note to Self",
   editCurrent: "Current",
   editText: "New text",
+  message: "Message",
+  deleteIntent: "About to delete a message for everyone",
+  deleteHeadline: "About to delete your message in {chat} for everyone",
+  deleteHeadlineNote: "About to delete your message in Note to Self on every device",
 } as const
 
 /** The translations of `MESSAGE_WORDS` and of the four message tools' titles. */
@@ -51,9 +55,13 @@ export const MESSAGE_TRANSLATIONS: Translations = {
     [MESSAGE_WORDS.editHeadlineNote]: "自分用メモのメッセージを編集しようとしています",
     [MESSAGE_WORDS.editCurrent]: "現在の本文",
     [MESSAGE_WORDS.editText]: "新しい本文",
+    [MESSAGE_WORDS.message]: "メッセージ",
+    [MESSAGE_WORDS.deleteIntent]: "メッセージを全員から削除しようとしています",
+    [MESSAGE_WORDS.deleteHeadline]: "{chat} の自分のメッセージを全員から削除しようとしています",
+    [MESSAGE_WORDS.deleteHeadlineNote]: "自分用メモのメッセージをすべての端末から削除しようとしています",
     "Send a message": "メッセージを送信する",
     "Edit a message": "メッセージを編集する",
     "React to a message": "メッセージにリアクションする",
-    "Delete a message for everyone": "全員に対してメッセージを削除する",
+    "Delete a message for everyone": "メッセージを全員から削除する",
   },
 }
