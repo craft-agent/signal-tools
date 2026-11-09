@@ -28,6 +28,12 @@ export const MESSAGE_WORDS = {
   deleteIntent: "About to delete a message for everyone",
   deleteHeadline: "About to delete your message in {chat} for everyone",
   deleteHeadlineNote: "About to delete your message in Note to Self on every device",
+  reactIntent: "About to react to a message",
+  reactHeadline: "About to react with {emoji} in {chat}",
+  reactHeadlineNote: "About to react with {emoji} in Note to Self",
+  unreactHeadline: "About to remove your {emoji} reaction in {chat}",
+  unreactHeadlineNote: "About to remove your {emoji} reaction in Note to Self",
+  replaces: "Replaces",
 } as const
 
 /** The translations of `MESSAGE_WORDS` and of the four message tools' titles. */
@@ -59,6 +65,12 @@ export const MESSAGE_TRANSLATIONS: Translations = {
     [MESSAGE_WORDS.deleteIntent]: "メッセージを全員から削除しようとしています",
     [MESSAGE_WORDS.deleteHeadline]: "{chat} の自分のメッセージを全員から削除しようとしています",
     [MESSAGE_WORDS.deleteHeadlineNote]: "自分用メモのメッセージをすべての端末から削除しようとしています",
+    [MESSAGE_WORDS.reactIntent]: "メッセージにリアクションしようとしています",
+    [MESSAGE_WORDS.reactHeadline]: "{chat} で {emoji} のリアクションを付けようとしています",
+    [MESSAGE_WORDS.reactHeadlineNote]: "自分用メモで {emoji} のリアクションを付けようとしています",
+    [MESSAGE_WORDS.unreactHeadline]: "{chat} で付けた {emoji} のリアクションを取り消そうとしています",
+    [MESSAGE_WORDS.unreactHeadlineNote]: "自分用メモで付けた {emoji} のリアクションを取り消そうとしています",
+    [MESSAGE_WORDS.replaces]: "今のリアクション",
     "Send a message": "メッセージを送信する",
     "Edit a message": "メッセージを編集する",
     "React to a message": "メッセージにリアクションする",

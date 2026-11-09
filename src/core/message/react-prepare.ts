@@ -11,6 +11,8 @@ export type PreparedReaction = {
   /** The emoji to send: the one to set, or the user's current one when removing. */
   emoji: string
   remove: boolean
+  /** The user's current emoji on the message that setting a new one replaces; null when there is none, and when removing. */
+  replaces: string | null
 }
 
 /** The emoji the user reacted to a message with, or null. */
@@ -46,8 +48,8 @@ export function prepareReaction(
         "Your reaction to that message is another emoji, not that one; remove it without giving an emoji.",
       )
     }
-    return { target, emoji: current, remove: true }
+    return { target, emoji: current, remove: true, replaces: null }
   }
   if (reaction.emoji === current) throw new ToolError("invalid_argument", "That reaction is already there.")
-  return { target, emoji: reaction.emoji, remove: false }
+  return { target, emoji: reaction.emoji, remove: false, replaces: current }
 }
