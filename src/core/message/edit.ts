@@ -5,7 +5,7 @@ import { editInput, editOutput, type EditOutput } from "./action-schema"
 import { checkedText, messageReference } from "./arguments"
 import { MAX_EDITS, MAX_TEXT_CHARACTERS, MESSAGE_EDIT_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
-import { chatFacts, chatHeadline, chatSubject, membersFacts, writtenFact } from "./describe"
+import { chatFacts, chatHeadline, chatSubject, membersFacts, messageTextFact } from "./describe"
 import { prepareEdit } from "./edit-prepare"
 import { prepareChat } from "./prepare"
 import { quoteParams } from "./quote"
@@ -43,8 +43,14 @@ export const signalMessageEdit = defineTool({
       const subject = chatSubject(mirror, prepared)
       return {
         headline: chatHeadline(subject, MESSAGE_WORDS.editHeadline, MESSAGE_WORDS.editHeadlineNote),
-        facts: [...chatFacts(subject), writtenFact(MESSAGE_WORDS.editCurrent, edit.body), ...membersFacts(subject)],
+        facts: [
+          ...chatFacts(subject),
+          // An edit is refused for a view-once message, so only the timer can hide the current text
+          messageTextFact(MESSAGE_WORDS.editCurrent, { body: edit.body, view_once: 0, expires_in: edit.expiresIn }),
+          ...membersFacts(subject),
+        ],
         text: { label: MESSAGE_WORDS.editText, body: text },
+        pins: subject.pins,
       }
     })
   },

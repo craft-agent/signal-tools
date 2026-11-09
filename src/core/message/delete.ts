@@ -6,7 +6,7 @@ import { deleteInput, deleteOutput, type DeleteOutput } from "./action-schema"
 import { messageReference } from "./arguments"
 import { MESSAGE_DELETE_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
-import { chatFacts, chatHeadline, chatSubject, filesFacts, membersFacts, writtenFact } from "./describe"
+import { chatFacts, chatHeadline, chatSubject, filesFacts, membersFacts, messageTextFact } from "./describe"
 import { findOwnMessage } from "./own"
 import { prepareChat } from "./prepare"
 import { recordDelete } from "./record-action"
@@ -38,23 +38,17 @@ export const signalMessageDelete = defineTool({
     const reference = messageReference(args.id, "id")
     return withMirror(ctx, args.account, (mirror, me) => {
       const prepared = prepareChat(mirror, me, args.chat, "delete")
-      const { body, attachments } = findOwnMessage(
-        mirror,
-        prepared.chat.id,
-        reference,
-        prepared.me,
-        Date.now(),
-        "delete",
-      )
+      const message = findOwnMessage(mirror, prepared.chat.id, reference, prepared.me, Date.now(), "delete")
       const subject = chatSubject(mirror, prepared)
       return {
         headline: chatHeadline(subject, MESSAGE_WORDS.deleteHeadline, MESSAGE_WORDS.deleteHeadlineNote),
         facts: [
           ...chatFacts(subject),
-          writtenFact(MESSAGE_WORDS.message, body),
+          messageTextFact(MESSAGE_WORDS.message, message),
           ...membersFacts(subject),
-          ...filesFacts(readList(attachments).length),
+          ...filesFacts(readList(message.attachments).length),
         ],
+        pins: subject.pins,
       }
     })
   },

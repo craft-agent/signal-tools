@@ -51,6 +51,7 @@ describe("a message to a group", () => {
         { label: "Members", value: { text: MESSAGE_WORDS.membersCount, values: { count: 2 } } },
       ],
       text: { label: MESSAGE_WORDS.sendText, body: "hello team" },
+      pins: { members: expect.stringMatching(/^[0-9a-f]{64}$/) },
     })
   })
 })
@@ -71,6 +72,16 @@ describe("a reply", () => {
     const description = await describeCall({ chat: GROUP, text: "agreed", reply_to: messageId(ALICE, 2000) })
     expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "Reply to", "Members"])
     expect(description?.facts[1]).toEqual({ label: "Reply to", value: "hello team" })
+  })
+
+  test("hides the text of a quoted view-once and of a quoted disappearing message", async () => {
+    t.ingest(dataFrom(ALICE, 5700, { message: "look", viewOnce: true }))
+    t.ingest(dataFrom(ALICE, 5800, { message: "fleeting", expiresInSeconds: 3600 }))
+    const viewOnce = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5700) })
+    const disappearing = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5800) })
+    expect(viewOnce?.facts).toContainEqual({ label: "Reply to", value: { text: MESSAGE_WORDS.viewOnce } })
+    expect(disappearing?.facts).toContainEqual({ label: "Reply to", value: { text: MESSAGE_WORDS.disappearing } })
+    expect(JSON.stringify([viewOnce, disappearing])).not.toMatch(/look|fleeting/)
   })
 
   test("shows `(no text)` for a quoted message without text", async () => {

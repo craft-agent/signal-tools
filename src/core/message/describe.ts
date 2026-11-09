@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { readList } from "../chat/message-rows"
 import { People } from "../chat/people"
 import type { Mirror } from "../signal/mirror"
@@ -18,6 +19,15 @@ export type ChatSubject = {
   members: number | null
   /** The People of the chat, loaded with the chat's person (for `authorFacts`). */
   people: People
+  /** Values the prompt does not show that a write must find unchanged: a group's members (a hash of their ids, since the prompt shows only their count); empty for a person and for Note to Self. */
+  pins: Record<string, string>
+}
+
+/** The pin of a group's members: a SHA-256 of their account ids, sorted, one per line. */
+function membersPin(members: string[]): string {
+  return createHash("sha256")
+    .update([...members].sort().join("\n"))
+    .digest("hex")
 }
 
 /** Reads what the description of a write to `prepared` says of its chat. */
@@ -32,23 +42,32 @@ export function chatSubject(mirror: Mirror, prepared: ChatOfCall): ChatSubject {
   else if (!noteToSelf) name = people.name(chat.id)
 
   let members: number | null = null
+  let pins: Record<string, string> = {}
   if (isGroup) {
     const row = mirror.prepare("SELECT members FROM chats WHERE id = ?").get(chat.id) as
       { members: string | null } | undefined
-    members = readList(row?.members ?? null).length
+    const ids = readList<string>(row?.members ?? null)
+    members = ids.length
+    pins = { members: membersPin(ids) }
   }
-  return { prepared, name, members, people }
+  return { prepared, name, members, people, pins }
 }
 
-/** The headline of a write to a chat: `noteToSelf` for the user's own chat, `template` with `{chat}` quoted for a named chat, none for a chat without a known name (the intent stands in). `values` are the template's other values. */
+/**
+ * The headline of a write to a chat: `noteToSelf` for the user's own chat,
+ * `template` with `{chat}` quoted for a named chat. A chat without a known name
+ * gets `unnamed` (with `values` alone) when the call gives one, else none (the
+ * intent stands in). `values` are the template's other values.
+ */
 export function chatHeadline(
   subject: ChatSubject,
   template: string,
   noteToSelf: string,
   values: Record<string, string> = {},
+  unnamed?: string,
 ): CallHeadline | undefined {
   if (subject.prepared.noteToSelf) return { text: noteToSelf, ...(Object.keys(values).length > 0 && { values }) }
-  if (subject.name === null) return undefined
+  if (subject.name === null) return unnamed === undefined ? undefined : { text: unnamed, values }
   return { text: template, values: { ...values, chat: subject.name } }
 }
 
@@ -79,14 +98,43 @@ export function writtenFact(label: string, text: string | null): CallFact {
   return { label, value: text?.trim() ? text : { text: MESSAGE_WORDS.noText } }
 }
 
-/** The `Reply to` fact: the quoted message's text as `writtenFact` shows it; none when the call quotes nothing. */
-export function replyToFacts(quote: Quote | null): CallFact[] {
-  return quote ? [writtenFact(MESSAGE_WORDS.replyTo, quote.text)] : []
+/**
+ * A fact holding the text of a message that already exists. An approval card
+ * can be read by others and outlives the message, so the text of a message its
+ * sender meant to disappear or be seen once is never copied: the value is a
+ * value template saying so. Any other message is shown by `writtenFact`.
+ */
+export function messageTextFact(
+  label: string,
+  message: { body: string | null; view_once: number; expires_in: number },
+): CallFact {
+  if (message.view_once) return { label, value: { text: MESSAGE_WORDS.viewOnce } }
+  if (message.expires_in > 0) return { label, value: { text: MESSAGE_WORDS.disappearing } }
+  return writtenFact(label, message.body)
 }
 
-/** The `From` fact: `you` (a value template, translated) for the user's own message, the author's name (plain string) otherwise; none when the author has no known name. Loads the author into `people`. */
-export function authorFacts(people: People, author: string): CallFact[] {
+/** The `Reply to` fact: the quoted message's text as `messageTextFact` shows it; none when the call quotes nothing. */
+export function replyToFacts(quote: Quote | null): CallFact[] {
+  if (!quote) return []
+  return [
+    messageTextFact(MESSAGE_WORDS.replyTo, {
+      body: quote.text,
+      view_once: quote.viewOnce ?? 0,
+      expires_in: quote.expiresIn ?? 0,
+    }),
+  ]
+}
+
+/**
+ * The `From` fact: `you` (a value template, translated) for the user's own
+ * message, the author's name (plain string) otherwise; none when the author has
+ * no known name, and none when the author is the person of a person chat whose
+ * name the headline already shows. Loads the author into the subject's `people`.
+ */
+export function authorFacts(subject: ChatSubject, author: string): CallFact[] {
+  const { people, prepared } = subject
   if (author === people.me) return [{ label: MESSAGE_WORDS.from, value: { text: MESSAGE_WORDS.you } }]
+  if (subject.name !== null && prepared.chat.kind === "person" && author === prepared.chat.id) return []
   people.load([author])
   const name = people.name(author)
   return name === null ? [] : [{ label: MESSAGE_WORDS.from, value: name }]

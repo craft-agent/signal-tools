@@ -128,21 +128,12 @@ describe("the approval prompt of signal_file_save", () => {
   })
 
   test("a message with two files, in English", async () => {
-    expect(await prompt()).toBe(
-      lines('About to save files from "Alice"', "", "--- Details ---", "", "From: Alice", "Files: 2 files"),
-    )
+    expect(await prompt()).toBe(lines('About to save files from "Alice"', "", "--- Details ---", "", "Files: 2 files"))
   })
 
   test("a message with two files, in Japanese", async () => {
     expect(await prompt("ja")).toBe(
-      lines(
-        '"Alice" のメッセージのファイルを保存しようとしています',
-        "",
-        "--- 詳細 ---",
-        "",
-        "送信者: Alice",
-        "ファイル: 2 個",
-      ),
+      lines('"Alice" のメッセージのファイルを保存しようとしています', "", "--- 詳細 ---", "", "ファイル: 2 個"),
     )
   })
 })

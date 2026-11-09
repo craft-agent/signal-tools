@@ -34,6 +34,10 @@ export const MESSAGE_WORDS = {
   unreactHeadline: "About to remove your {emoji} reaction in {chat}",
   unreactHeadlineNote: "About to remove your {emoji} reaction in Note to Self",
   replaces: "Replaces",
+  viewOnce: "(view-once message)",
+  disappearing: "(disappearing message)",
+  reactUnnamed: "About to react with {emoji}",
+  unreactUnnamed: "About to remove your {emoji} reaction",
 } as const
 
 /** The translations of `MESSAGE_WORDS` and of the four message tools' titles. */
@@ -50,7 +54,7 @@ export const MESSAGE_TRANSLATIONS: Translations = {
     [MESSAGE_WORDS.filesCount]: "{count} 個",
     [MESSAGE_WORDS.noText]: "（本文なし）",
     [MESSAGE_WORDS.from]: "送信者",
-    [MESSAGE_WORDS.you]: "あなた",
+    [MESSAGE_WORDS.you]: "自分",
     [MESSAGE_WORDS.sendIntent]: "メッセージを送信しようとしています",
     [MESSAGE_WORDS.sendHeadline]: "{chat} にメッセージを送信しようとしています",
     [MESSAGE_WORDS.sendHeadlineNote]: "自分用メモにメッセージを送信しようとしています",
@@ -70,7 +74,11 @@ export const MESSAGE_TRANSLATIONS: Translations = {
     [MESSAGE_WORDS.reactHeadlineNote]: "自分用メモで {emoji} のリアクションを付けようとしています",
     [MESSAGE_WORDS.unreactHeadline]: "{chat} で付けた {emoji} のリアクションを取り消そうとしています",
     [MESSAGE_WORDS.unreactHeadlineNote]: "自分用メモで付けた {emoji} のリアクションを取り消そうとしています",
-    [MESSAGE_WORDS.replaces]: "今のリアクション",
+    [MESSAGE_WORDS.replaces]: "現在のリアクション",
+    [MESSAGE_WORDS.viewOnce]: "（一度だけ表示のメッセージ）",
+    [MESSAGE_WORDS.disappearing]: "（消えるメッセージ）",
+    [MESSAGE_WORDS.reactUnnamed]: "{emoji} のリアクションを付けようとしています",
+    [MESSAGE_WORDS.unreactUnnamed]: "付けた {emoji} のリアクションを取り消そうとしています",
     "Send a message": "メッセージを送信する",
     "Edit a message": "メッセージを編集する",
     "React to a message": "メッセージにリアクションする",

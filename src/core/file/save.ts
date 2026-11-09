@@ -15,7 +15,7 @@ import { findMessageFiles, messageReference } from "./message-files"
 import { safeFileName, uniqueNames } from "./names"
 import { quarantine, SYSTEM_HOST, type Quarantined, type QuarantineHost } from "./quarantine"
 import { fitListings, listingOf } from "./result"
-import { describeFileSave } from "./save-describe"
+import { fileSaveDescriber } from "./save-describe"
 import { saveOne } from "./save-file"
 import { input, output, type FileSaveOutput, type SavedFile } from "./schema"
 import { unpackArchive, type Unpacked, type UnpackRequest } from "./unpack"
@@ -66,7 +66,7 @@ export function createFileSave(host: Partial<FileSaveHost> = {}) {
     intent: FILE_WORDS.saveIntent,
     toolset: "files",
     class: "add",
-    describe: describeFileSave,
+    describe: fileSaveDescriber(() => machine.now()),
     input,
     output,
     async targets(args, ctx) {

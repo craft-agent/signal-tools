@@ -62,6 +62,17 @@ describe("an edit in a group", () => {
       { label: "Current", value: "hello team" },
       { label: "Members", value: { text: MESSAGE_WORDS.membersCount, values: { count: 2 } } },
     ])
+    expect(description?.pins).toEqual({ members: expect.stringMatching(/^[0-9a-f]{64}$/) })
+  })
+})
+
+describe("an edit of a disappearing message", () => {
+  test("never shows its current text", async () => {
+    t.ownMessage(OWN + 30, { message: "fleeting", expiresInSeconds: 3600 })
+    const description = await describeCall({ chat: ALICE, id: messageId(ME, OWN + 30), text: "second" })
+    expect(description?.facts).toContainEqual({ label: "Current", value: { text: MESSAGE_WORDS.disappearing } })
+    expect(JSON.stringify(description?.facts)).not.toContain("fleeting")
+    expect(description?.text?.body).toBe("second")
   })
 })
 

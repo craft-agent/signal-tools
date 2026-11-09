@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, setSystemTime, test } from "bun:test"
 import { callDescription } from "../describe"
-import { GROUP, OTHER_GROUP } from "../chat/read.testing"
+import { ALICE_NUMBER, CAROL, GROUP, OTHER_GROUP } from "../chat/read.testing"
 import { messageId } from "../signal/ids"
-import { ALICE, deleteFrom, GROUP_ID, ME } from "../signal/mirror.testing"
+import { ALICE, dataFrom, deleteFrom, GROUP_ID, ME } from "../signal/mirror.testing"
 import { AT, createActionFixture, OWN, reactionData, type ActionFixture } from "./action.testing"
 import { signalMessageReact } from "./react"
 import { MESSAGE_WORDS } from "./words"
@@ -33,17 +33,37 @@ describe("a reaction to another person's message", () => {
       headline: { text: MESSAGE_WORDS.reactHeadline, values: { emoji: "👍", chat: "Alice" } },
       facts: [
         { label: "Chat", value: { text: MESSAGE_WORDS.person } },
-        { label: "From", value: "Alice" },
         { label: "Message", value: "hello from Alice" },
       ],
     })
+  })
+
+  test("hides the text of a view-once and of a disappearing message", async () => {
+    t.ingest(dataFrom(ALICE, 5200, { message: "look", viewOnce: true }))
+    t.ingest(dataFrom(ALICE, 5300, { message: "fleeting", expiresInSeconds: 3600 }))
+    const viewOnce = await describeCall({ chat: ALICE, id: messageId(ALICE, 5200), emoji: "👍" })
+    const disappearing = await describeCall({ chat: ALICE, id: messageId(ALICE, 5300), emoji: "👍" })
+    expect(viewOnce?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.viewOnce } })
+    expect(disappearing?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.disappearing } })
+    expect(JSON.stringify([viewOnce, disappearing])).not.toMatch(/look|fleeting/)
+  })
+
+  test("in a chat known only by a number still names the emoji, and shows no number", async () => {
+    t.contacts({ uuid: CAROL, number: ALICE_NUMBER })
+    t.ingest(dataFrom(CAROL, 6000, { message: "hi" }))
+    const add = await describeCall({ chat: CAROL, id: messageId(CAROL, 6000), emoji: "👍" })
+    expect(add?.headline).toEqual({ text: MESSAGE_WORDS.reactUnnamed, values: { emoji: "👍" } })
+    expect(JSON.stringify(add)).not.toContain("5555")
+    t.ownMessage(OWN + 500, reactionData(CAROL, 6000, "❤️"), CAROL)
+    const remove = await describeCall({ chat: CAROL, id: messageId(CAROL, 6000), remove: true })
+    expect(remove?.headline).toEqual({ text: MESSAGE_WORDS.unreactUnnamed, values: { emoji: "❤️" } })
   })
 
   test("that replaces an earlier reaction says what it replaces", async () => {
     t.ownMessage(OWN + 500, reactionData(ALICE, 5000, "❤️"))
     const description = await describeCall({ chat: ALICE, id: THEIRS, emoji: "👍" })
     expect(description?.headline).toEqual({ text: MESSAGE_WORDS.reactHeadline, values: { emoji: "👍", chat: "Alice" } })
-    expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "Replaces", "From", "Message"])
+    expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "Replaces", "Message"])
     expect(description?.facts[1]).toEqual({ label: "Replaces", value: "❤️" })
   })
 })
@@ -56,7 +76,7 @@ describe("removing a reaction", () => {
       text: MESSAGE_WORDS.unreactHeadline,
       values: { emoji: "❤️", chat: "Alice" },
     })
-    expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "From", "Message"])
+    expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "Message"])
   })
 })
 
@@ -79,6 +99,7 @@ describe("a reaction in a group", () => {
         { label: "Message", value: "hello team" },
         { label: "Members", value: { text: MESSAGE_WORDS.membersCount, values: { count: 2 } } },
       ],
+      pins: { members: expect.stringMatching(/^[0-9a-f]{64}$/) },
     })
   })
 })

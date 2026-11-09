@@ -41,6 +41,7 @@ export const signalMessageSend = defineTool({
         headline: chatHeadline(subject, MESSAGE_WORDS.sendHeadline, MESSAGE_WORDS.sendHeadlineNote),
         facts: [...chatFacts(subject), ...replyToFacts(prepared.quote), ...membersFacts(subject)],
         text: { label: MESSAGE_WORDS.sendText, body: text },
+        pins: subject.pins,
       }
     })
   },

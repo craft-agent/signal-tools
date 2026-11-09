@@ -5,8 +5,7 @@ import { reactInput, reactOutput, type ReactOutput } from "./action-schema"
 import { messageReference, reactionRequest } from "./arguments"
 import { MAX_EMOJI_UNITS, MESSAGE_REACT_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
-import { authorFacts, chatFacts, chatHeadline, chatSubject, membersFacts, writtenFact } from "./describe"
-import { findLiveRow } from "./lookup"
+import { authorFacts, chatFacts, chatHeadline, chatSubject, membersFacts, messageTextFact } from "./describe"
 import { prepareChat } from "./prepare"
 import { prepareReaction } from "./react-prepare"
 import { recordReaction } from "./record-action"
@@ -45,20 +44,32 @@ export const signalMessageReact = defineTool({
       const prepared = prepareChat(mirror, me, args.chat, "react")
       const reaction = prepareReaction(mirror, prepared, target, request, now)
       const subject = chatSubject(mirror, prepared)
-      const { body } = findLiveRow<{ body: string | null }>(mirror, prepared.chat.id, target, "body", now)
       const values = { emoji: reaction.emoji }
       const headline = reaction.remove
-        ? chatHeadline(subject, MESSAGE_WORDS.unreactHeadline, MESSAGE_WORDS.unreactHeadlineNote, values)
-        : chatHeadline(subject, MESSAGE_WORDS.reactHeadline, MESSAGE_WORDS.reactHeadlineNote, values)
+        ? chatHeadline(
+            subject,
+            MESSAGE_WORDS.unreactHeadline,
+            MESSAGE_WORDS.unreactHeadlineNote,
+            values,
+            MESSAGE_WORDS.unreactUnnamed,
+          )
+        : chatHeadline(
+            subject,
+            MESSAGE_WORDS.reactHeadline,
+            MESSAGE_WORDS.reactHeadlineNote,
+            values,
+            MESSAGE_WORDS.reactUnnamed,
+          )
       return {
         headline,
         facts: [
           ...chatFacts(subject),
           ...(reaction.replaces === null ? [] : [{ label: MESSAGE_WORDS.replaces, value: reaction.replaces }]),
-          ...authorFacts(subject.people, target.author),
-          writtenFact(MESSAGE_WORDS.message, body),
+          ...authorFacts(subject, target.author),
+          messageTextFact(MESSAGE_WORDS.message, reaction.message),
           ...membersFacts(subject),
         ],
+        pins: subject.pins,
       }
     })
   },

@@ -2,7 +2,16 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { withMirror } from "../chat/open"
 import { ALICE_NUMBER, CAROL, GROUP, OTHER_GROUP } from "../chat/read.testing"
 import { ALICE, BOB, dataFrom, GROUP_ID, ME } from "../signal/mirror.testing"
-import { authorFacts, chatFacts, chatHeadline, chatSubject, filesFacts, membersFacts, writtenFact } from "./describe"
+import {
+  authorFacts,
+  chatFacts,
+  chatHeadline,
+  chatSubject,
+  filesFacts,
+  membersFacts,
+  messageTextFact,
+  writtenFact,
+} from "./describe"
 import { prepareChat } from "./prepare"
 import { createSendFixture, type SendFixture } from "./send.testing"
 import { MESSAGE_WORDS } from "./words"
@@ -21,11 +30,10 @@ function subjectOf(chat: string) {
   return withMirror(fixture, undefined, (mirror, me) => chatSubject(mirror, prepareChat(mirror, me, chat, "send")))
 }
 
-function authorsOf(author: string) {
-  return withMirror(fixture, undefined, (mirror, me) => {
-    const { people } = chatSubject(mirror, prepareChat(mirror, me, ME, "send"))
-    return authorFacts(people, author)
-  })
+function authorsOf(author: string, chat = ME) {
+  return withMirror(fixture, undefined, (mirror, me) =>
+    authorFacts(chatSubject(mirror, prepareChat(mirror, me, chat, "send")), author),
+  )
 }
 
 describe("a person's chat", () => {
@@ -132,5 +140,75 @@ describe("authorFacts", () => {
 
   test("is none for an author without a known name", async () => {
     expect(await authorsOf(CAROL)).toEqual([])
+  })
+
+  test("is none for the person of a person chat whose name the headline shows", async () => {
+    expect(await authorsOf(ALICE, ALICE)).toEqual([])
+  })
+
+  test("names the author of a group's message, and says `you` for the user in any chat", async () => {
+    expect(await authorsOf(ALICE, GROUP)).toEqual([{ label: "From", value: "Alice" }])
+    expect(await authorsOf(ME, ALICE)).toEqual([{ label: "From", value: { text: MESSAGE_WORDS.you } }])
+  })
+})
+
+describe("messageTextFact", () => {
+  const message = { body: "secret", view_once: 0, expires_in: 0 }
+
+  test("holds the text of an ordinary message", () => {
+    expect(messageTextFact("Message", message)).toEqual({ label: "Message", value: "secret" })
+    expect(messageTextFact("Message", { ...message, body: null })).toEqual({
+      label: "Message",
+      value: { text: MESSAGE_WORDS.noText },
+    })
+  })
+
+  test("never holds the text of a view-once message", () => {
+    expect(messageTextFact("Message", { ...message, view_once: 1 })).toEqual({
+      label: "Message",
+      value: { text: MESSAGE_WORDS.viewOnce },
+    })
+  })
+
+  test("never holds the text of a disappearing message", () => {
+    expect(messageTextFact("Message", { ...message, expires_in: 60 })).toEqual({
+      label: "Message",
+      value: { text: MESSAGE_WORDS.disappearing },
+    })
+  })
+})
+
+describe("the members pin of a group", () => {
+  const MEMBERS = [{ uuid: ALICE }, { uuid: BOB }, { uuid: ME }]
+
+  test("is the same for the same members in any order", async () => {
+    fixture.groups({ id: GROUP_ID, name: "Team", members: MEMBERS })
+    const first = (await subjectOf(GROUP)).pins
+    fixture.groups({ id: GROUP_ID, name: "Team", members: [...MEMBERS].reverse() })
+    expect((await subjectOf(GROUP)).pins).toEqual(first)
+    expect(first.members).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  test("changes when one member is replaced", async () => {
+    fixture.groups({ id: GROUP_ID, name: "Team", members: MEMBERS })
+    const first = (await subjectOf(GROUP)).pins
+    fixture.groups({ id: GROUP_ID, name: "Team", members: [{ uuid: ALICE }, { uuid: CAROL }, { uuid: ME }] })
+    expect((await subjectOf(GROUP)).pins).not.toEqual(first)
+  })
+
+  test("is none for a person and for Note to Self", async () => {
+    expect((await subjectOf(ALICE)).pins).toEqual({})
+    expect((await subjectOf(ME)).pins).toEqual({})
+  })
+})
+
+describe("an unnamed chat's headline", () => {
+  test("uses the `unnamed` template with the values alone, when the call gives one", async () => {
+    fixture.contacts({ uuid: CAROL, number: ALICE_NUMBER })
+    fixture.ingest(dataFrom(CAROL, 6000, { message: "hi" }))
+    const subject = await subjectOf(CAROL)
+    expect(chatHeadline(subject, "React {emoji} in {chat}", "React {emoji}", { emoji: "+1" }, "React {emoji}")).toEqual(
+      { text: "React {emoji}", values: { emoji: "+1" } },
+    )
   })
 })

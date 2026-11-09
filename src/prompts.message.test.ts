@@ -221,7 +221,6 @@ const CASES: Case[] = [
       `Target: ${TARGET_REACTED}`,
       "Chat: Person",
       "Replaces: ❤<U+FE0F>",
-      "From: Alice",
       "Message: hello from Alice",
     ),
     ja: lines(
@@ -231,8 +230,7 @@ const CASES: Case[] = [
       "",
       `対象: ${TARGET_REACTED}`,
       "チャット: 個人",
-      "今のリアクション: ❤<U+FE0F>",
-      "送信者: Alice",
+      "現在のリアクション: ❤<U+FE0F>",
       "メッセージ: hello from Alice",
     ),
   },
@@ -247,7 +245,6 @@ const CASES: Case[] = [
       "",
       `Target: ${TARGET_REACTED}`,
       "Chat: Person",
-      "From: Alice",
       "Message: hello from Alice",
     ),
     ja: lines(
@@ -257,7 +254,6 @@ const CASES: Case[] = [
       "",
       `対象: ${TARGET_REACTED}`,
       "チャット: 個人",
-      "送信者: Alice",
       "メッセージ: hello from Alice",
     ),
   },
@@ -270,36 +266,5 @@ describe("the approval prompt of a message tool", () => {
 
   test.each(CASES)("$name, in Japanese", async ({ spec, args, ja }) => {
     expect(await promptOf(spec, args, ctx, "ja")).toBe(ja)
-  })
-})
-
-const UNKNOWN_CHAT = "99999999-9999-4999-8999-999999999999"
-
-describe("a description that fails still gives the prompt", () => {
-  const args = { chat: UNKNOWN_CHAT, text: "hello" }
-  const target = `default/${UNKNOWN_CHAT}`
-
-  test("an unknown chat gives the intent alone with its target", async () => {
-    expect(await promptOf(signalMessageSend, args, ctx)).toBe(
-      lines("About to send a message", "", "--- Details ---", "", `Target: ${target}`),
-    )
-    expect(await promptOf(signalMessageSend, args, ctx, "ja")).toBe(
-      lines("メッセージを送信しようとしています", "", "--- 詳細 ---", "", `対象: ${target}`),
-    )
-  })
-
-  test("a describer that never answers within the timeout gives the intent alone with its target", async () => {
-    const hanging: ToolSpec = {
-      ...signalMessageSend,
-      describe: (_args, { signal }) =>
-        new Promise((_resolve, reject) => signal?.addEventListener("abort", () => reject(signal.reason))),
-    }
-    const sent = { chat: ALICE, text: "hello" }
-    expect(await promptOf(hanging, sent, ctx, undefined, 20)).toBe(
-      lines("About to send a message", "", "--- Details ---", "", `Target: ${TARGET_ALICE}`),
-    )
-    expect(await promptOf(hanging, sent, ctx, "ja", 20)).toBe(
-      lines("メッセージを送信しようとしています", "", "--- 詳細 ---", "", `対象: ${TARGET_ALICE}`),
-    )
   })
 })

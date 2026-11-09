@@ -31,13 +31,10 @@ function describeCall(args: Record<string, unknown>) {
 }
 
 describe("a person's message", () => {
-  test("names the chat, the sender and the number of files, and has no Chat fact", async () => {
+  test("names the chat and the number of files, with no Chat fact and no From fact repeating the headline", async () => {
     expect(await describeCall(saveArgs())).toEqual({
       headline: { text: FILE_WORDS.saveHeadline, values: { chat: "Alice" } },
-      facts: [
-        { label: "From", value: "Alice" },
-        { label: "Files", value: { text: MESSAGE_WORDS.filesCount, values: { count: 2 } } },
-      ],
+      facts: [{ label: "Files", value: { text: MESSAGE_WORDS.filesCount, values: { count: 2 } } }],
     })
   })
 

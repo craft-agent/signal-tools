@@ -82,6 +82,19 @@ describe("a deletion in a group", () => {
       { label: "Message", value: "hello team" },
       { label: "Members", value: { text: MESSAGE_WORDS.membersCount, values: { count: 2 } } },
     ])
+    expect(description?.pins).toEqual({ members: expect.stringMatching(/^[0-9a-f]{64}$/) })
+  })
+})
+
+describe("a deletion of a disappearing or view-once message", () => {
+  test("never shows its text", async () => {
+    t.ownMessage(OWN + 30, { message: "fleeting", expiresInSeconds: 3600 })
+    t.ownMessage(OWN + 31, { message: "look", viewOnce: true })
+    const disappearing = await describeCall({ chat: ALICE, id: messageId(ME, OWN + 30) })
+    const viewOnce = await describeCall({ chat: ALICE, id: messageId(ME, OWN + 31) })
+    expect(disappearing?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.disappearing } })
+    expect(viewOnce?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.viewOnce } })
+    expect(JSON.stringify([disappearing, viewOnce])).not.toMatch(/fleeting|look/)
   })
 })
 
