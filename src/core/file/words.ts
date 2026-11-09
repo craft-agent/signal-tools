@@ -8,6 +8,11 @@ export const FILE_WORDS = {
   sendHeadline: "About to send files to {chat}",
   sendHeadlineNote: "About to send files to Note to Self",
   caption: "Caption",
+  saveIntent: "About to save a message's files",
+  saveHeadline: "About to save files from {chat}",
+  saveHeadlineNote: "About to save files from Note to Self",
+  unpack: "Unpack",
+  unpackValue: "Archives, after inspection",
 } as const
 
 /** The translations of `FILE_WORDS` and of the file tools' titles. */
@@ -19,6 +24,11 @@ export const FILE_TRANSLATIONS: Translations = {
     [FILE_WORDS.sendHeadline]: "{chat} にファイルを送信しようとしています",
     [FILE_WORDS.sendHeadlineNote]: "自分用メモにファイルを送信しようとしています",
     [FILE_WORDS.caption]: "キャプション",
+    [FILE_WORDS.saveIntent]: "メッセージのファイルを保存しようとしています",
+    [FILE_WORDS.saveHeadline]: "{chat} のメッセージのファイルを保存しようとしています",
+    [FILE_WORDS.saveHeadlineNote]: "自分用メモのメッセージのファイルを保存しようとしています",
+    [FILE_WORDS.unpack]: "展開",
+    [FILE_WORDS.unpackValue]: "検査を通ったアーカイブ",
     "Send files": "ファイルを送信する",
     "Save a message's files": "メッセージのファイルを保存する",
   },
