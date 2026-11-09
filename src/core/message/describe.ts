@@ -3,6 +3,7 @@ import { People } from "../chat/people"
 import type { Mirror } from "../signal/mirror"
 import type { CallFact, CallHeadline } from "../tool"
 import type { PreparedChat } from "./prepare"
+import type { Quote } from "./quote"
 import { MESSAGE_WORDS } from "./words"
 
 /** The chat a call writes to or reads from: a `PreparedChat`, or a chat a call may use without being a member, whose user may not be known yet. */
@@ -76,6 +77,11 @@ export function filesFacts(count: number): CallFact[] {
 /** A fact holding text a person wrote, as it is (a plain string, never translated), or the `(no text)` value template when the message has none or only blank text. */
 export function writtenFact(label: string, text: string | null): CallFact {
   return { label, value: text?.trim() ? text : { text: MESSAGE_WORDS.noText } }
+}
+
+/** The `Reply to` fact: the quoted message's text as `writtenFact` shows it; none when the call quotes nothing. */
+export function replyToFacts(quote: Quote | null): CallFact[] {
+  return quote ? [writtenFact(MESSAGE_WORDS.replyTo, quote.text)] : []
 }
 
 /** The `From` fact: `you` (a value template, translated) for the user's own message, the author's name (plain string) otherwise; none when the author has no known name. Loads the author into `people`. */
