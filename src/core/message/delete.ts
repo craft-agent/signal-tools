@@ -1,3 +1,4 @@
+import { readList } from "../chat/message-rows"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
 import { defineTool, StepErrors } from "../tool"
@@ -5,11 +6,13 @@ import { deleteInput, deleteOutput, type DeleteOutput } from "./action-schema"
 import { messageReference } from "./arguments"
 import { MESSAGE_DELETE_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
+import { chatFacts, chatHeadline, chatSubject, filesFacts, membersFacts, messageTextFact } from "./describe"
 import { findOwnMessage } from "./own"
 import { prepareChat } from "./prepare"
 import { recordDelete } from "./record-action"
 import { deleteResult } from "./result"
 import { labelTargets } from "./targets"
+import { MESSAGE_WORDS } from "./words"
 
 const DELETE_METHOD = "remoteDelete"
 
@@ -25,11 +28,30 @@ export const signalMessageDelete = defineTool({
     "A failure `uncertain` means the deletion may have gone out: check the chat on the phone, never repeat it blindly.",
     "A deletion is recorded in the local mirror, which then drops the message, its files, its earlier versions, its reactions and every quote of it; `errors.record` says when that failed although the message was deleted.",
   ].join(" "),
+  intent: MESSAGE_WORDS.deleteIntent,
   toolset: "actions",
   class: "administrative",
   input: deleteInput,
   output: deleteOutput,
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
+  async describe(args, ctx) {
+    const reference = messageReference(args.id, "id")
+    return withMirror(ctx, args.account, (mirror, me) => {
+      const prepared = prepareChat(mirror, me, args.chat, "delete")
+      const message = findOwnMessage(mirror, prepared.chat.id, reference, prepared.me, Date.now(), "delete")
+      const subject = chatSubject(mirror, prepared)
+      return {
+        headline: chatHeadline(subject, MESSAGE_WORDS.deleteHeadline, MESSAGE_WORDS.deleteHeadlineNote),
+        facts: [
+          ...chatFacts(subject),
+          messageTextFact(MESSAGE_WORDS.message, message),
+          ...membersFacts(subject),
+          ...filesFacts(readList(message.attachments).length),
+        ],
+        pins: subject.pins,
+      }
+    })
+  },
   async execute(args, ctx): Promise<DeleteOutput> {
     const reference = messageReference(args.id, "id")
     const now = Date.now()

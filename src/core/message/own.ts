@@ -9,7 +9,7 @@ export type OwnAction = "edit" | "delete"
 /** The action as the refusal names it. */
 const PASSIVE: Record<OwnAction, string> = { edit: "edited", delete: "deleted for everyone" }
 
-const COLUMNS = "ts, body, attachments, quote, sticker, other, view_once, edited"
+const COLUMNS = "ts, body, attachments, quote, sticker, other, view_once, edited, expires_in"
 
 /** The columns of the user's own message that an action needs to decide and to carry on. */
 export type OwnMessage = {
@@ -24,6 +24,8 @@ export type OwnMessage = {
   view_once: number
   /** The time of the latest edit; null for a message never edited. */
   edited: number | null
+  /** The message's disappearing timer in seconds, 0 for none. */
+  expires_in: number
 }
 
 /**

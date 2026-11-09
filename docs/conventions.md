@@ -519,15 +519,18 @@ Every entry point takes the same settings:
   the label's outbox, private, and checked there; signal-cli sends that copy,
   and the outbox is removed after the call, so a file that changes meanwhile
   never goes out unchecked. A `sha256` given with a file must match the copy,
-  or the call is `stale`: the harness shows only a path when it asks.
+  or the call is `stale`: an MCP client shows only a path when it asks. A
+  native plugin's prompt shows the files' size and pins each file's hash, so
+  a file changed after the prompt stops the call as `stale` before it runs.
 - **A send carries at most 10 files and 100 MiB**, what Signal itself takes.
 
 ## Writes
 
 - **A write's arguments are the whole change**: the chat by id, the text as
   it should arrive (surrounding blank space trimmed), the files by path.
-  Nothing is chosen at run time from the current state. The harness shows the
-  arguments when it asks, so what it shows is what goes out.
+  Nothing is chosen at run time from the current state. An MCP client shows
+  the arguments when it asks, and a native plugin shows what they come to (see
+  "Approval prompts"), so what it shows is what goes out.
 - **A send's outcome is never guessed.** A result means Signal accepted the
   message: for a group, per member, with the members it did not reach listed,
   since what reached some members cannot be taken back by throwing. A failure
@@ -562,6 +565,54 @@ Every entry point takes the same settings:
   `uncertain`.
 - **No tool sends read receipts or typing indicators.** The phone keeps its
   notifications, and nobody learns that a tool read a message.
+
+## Approval prompts
+
+Every write tool has an `intent` and a `describe` (see "Write classes"), and
+its words have a Japanese table beside it.
+
+- **What a prompt says comes from the mirror**, read the way the call reads
+  it. A `describe` opens the mirror read-only and makes the checks `execute`
+  makes on the arguments and the mirror, so a call they would refuse shows no
+  description, and a chat is named as the mirror names it, never as the model
+  did. A file's contents are still inspected only when the call runs. A chat without a known name has no headline: the intent stands in its
+  place.
+- **Nothing in it moves with the clock**, since the prompt is pinned. The
+  24-hour window of an action and a message that has disappeared decide
+  whether there is a description, never what it says.
+- **No phone number.** An approval card can be shown where other people read
+  it; the name and the kind of chat say whom the call reaches.
+- **Note to Self has headlines of its own** and no `Chat` fact, which would
+  only repeat them.
+- **The text a person wrote is data.** The message being sent, edited,
+  reacted to or deleted is shown as it is, cut to the budget; the kind of
+  chat and every unit are the tool's words and are translated.
+- **The text of a disappearing or view-once message never reaches a
+  prompt.** An approval card can be read by others and outlives the message,
+  while its sender meant it to disappear or be seen once. The fact that would
+  hold it says `(disappearing message)` or `(view-once message)` instead. The
+  text the call itself writes (a send's, an edit's new text) is still shown:
+  the user is writing it now.
+- **A write to a group also pins its members.** The prompt shows only their
+  count, so the pin is a hash of their ids and a swapped member stops the call
+  as `stale`.
+
+The facts the tools add, in the order a prompt shows them:
+
+| Fact       | Value                                                                                                              | Tools                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| `Chat`     | `Person` or `Group`                                                                                                | every tool but file save     |
+| `Replaces` | the user's reaction there now, which a new one replaces                                                            | react                        |
+| `From`     | who wrote the message, as the mirror names them, or `you`; none for the person of a person chat the headline names | react, file save             |
+| `Message`  | the text of the message acted on, `(no text)`, `(disappearing message)` or `(view-once message)`                   | react, delete                |
+| `Current`  | the text an edit replaces, or `(disappearing message)`                                                             | edit                         |
+| `Reply to` | the text of the message a send quotes, `(no text)`, `(disappearing message)` or `(view-once message)`              | message send, file send      |
+| `Members`  | `{count} members` of a group, the user included                                                                    | every tool but file save     |
+| `Files`    | `{count} files`: a send's of several, a deleted message's, a save's                                                | file send, delete, file save |
+| `Unpack`   | `Archives, after inspection`, when `unpack` is set                                                                 | file save                    |
+| `Size`     | the files' total size (`sizeFact`)                                                                                 | file send                    |
+
+A file send also pins each file's SHA-256, which the prompt does not show.
 
 ## Toolsets
 

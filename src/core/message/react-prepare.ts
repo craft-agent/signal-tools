@@ -11,6 +11,10 @@ export type PreparedReaction = {
   /** The emoji to send: the one to set, or the user's current one when removing. */
   emoji: string
   remove: boolean
+  /** The user's current emoji on the message that setting a new one replaces; null when there is none, and when removing. */
+  replaces: string | null
+  /** The reacted-to message's text, view-once mark and disappearing timer, for the description of the call. */
+  message: { body: string | null; view_once: number; expires_in: number }
 }
 
 /** The emoji the user reacted to a message with, or null. */
@@ -36,7 +40,8 @@ export function prepareReaction(
   reaction: ReactionRequest,
   now: number,
 ): PreparedReaction {
-  findLiveRow(mirror, chat.id, target, "ts", now)
+  const row = findLiveRow<{ body: string | null; view_once: number }>(mirror, chat.id, target, "body, view_once", now)
+  const message = { body: row.body, view_once: row.view_once, expires_in: row.expires_in }
   const current = currentReaction(mirror, target, me)
   if (reaction.remove) {
     if (current === null) throw new ToolError("not_found", "You have not reacted to that message.")
@@ -46,8 +51,8 @@ export function prepareReaction(
         "Your reaction to that message is another emoji, not that one; remove it without giving an emoji.",
       )
     }
-    return { target, emoji: current, remove: true }
+    return { target, emoji: current, remove: true, replaces: null, message }
   }
   if (reaction.emoji === current) throw new ToolError("invalid_argument", "That reaction is already there.")
-  return { target, emoji: reaction.emoji, remove: false }
+  return { target, emoji: reaction.emoji, remove: false, replaces: current, message }
 }

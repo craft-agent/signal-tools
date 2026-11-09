@@ -16,6 +16,10 @@ export type Quote = {
   text: string | null
   /** The mentions of that text that name someone. */
   mentions: StoredMention[]
+  /** Whether the quoted message is view-once (1) or not (0); only the description of the call reads it, `quoteParams` ignores it. */
+  viewOnce?: number
+  /** The quoted message's disappearing timer in seconds, 0 for none; only the description of the call reads it, `quoteParams` ignores it. */
+  expiresIn?: number
 }
 
 /** The mentions that name someone, as a quote carries them. */
@@ -56,11 +60,11 @@ export function quoteParams(quote: Quote): Record<string, unknown> {
  * alike; so is one deleted for everyone or expired, saying it is gone.
  */
 export function findQuote(mirror: Mirror, chat: string, reference: { author: string; ts: number }, now: number): Quote {
-  const row = findLiveRow<{ body: string | null; mentions: string | null }>(
+  const row = findLiveRow<{ body: string | null; mentions: string | null; view_once: number }>(
     mirror,
     chat,
     reference,
-    "body, mentions",
+    "body, mentions, view_once",
     now,
   )
   return {
@@ -68,5 +72,7 @@ export function findQuote(mirror: Mirror, chat: string, reference: { author: str
     author: reference.author,
     text: row.body,
     mentions: namedMentions(readList<StoredMention>(row.mentions)),
+    viewOnce: row.view_once,
+    expiresIn: row.expires_in,
   }
 }

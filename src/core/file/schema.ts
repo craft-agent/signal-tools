@@ -16,6 +16,9 @@ export const input = z.object({
     ),
 })
 
+/** The arguments of `signal_file_save`, parsed. */
+export type FileSaveArguments = z.output<typeof input>
+
 const entry = z.strictObject({
   name: z.string().describe("The entry's path in the archive, cleaned of control and invisible characters."),
   size: z.number().int(),

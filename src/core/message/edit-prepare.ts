@@ -11,6 +11,10 @@ import { quoteOfStored, type Quote } from "./quote"
 export type PreparedEdit = {
   /** The message's sent time: the one Signal points at. */
   timestamp: number
+  /** The message's current text (the latest edit). */
+  body: string
+  /** The message's disappearing timer in seconds, 0 for none; only the description reads it. */
+  expiresIn: number
   /** The message's quote, to send again with the edit; null for a message that quotes nothing. */
   quote: Quote | null
   /** How many more edits Signal allows once this one is made. */
@@ -66,5 +70,11 @@ export function prepareEdit(
       "This reply's quote cannot be sent again, so editing it would drop the quote.",
     )
   }
-  return { timestamp: message.ts, quote, editsLeft: MAX_EDITS - made - 1 }
+  return {
+    timestamp: message.ts,
+    body: message.body,
+    expiresIn: message.expires_in,
+    quote,
+    editsLeft: MAX_EDITS - made - 1,
+  }
 }

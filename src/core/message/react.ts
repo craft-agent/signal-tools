@@ -5,11 +5,13 @@ import { reactInput, reactOutput, type ReactOutput } from "./action-schema"
 import { messageReference, reactionRequest } from "./arguments"
 import { MAX_EMOJI_UNITS, MESSAGE_REACT_TOOL_ID } from "./constants"
 import { deliver } from "./deliver"
+import { authorFacts, chatFacts, chatHeadline, chatSubject, membersFacts, messageTextFact } from "./describe"
 import { prepareChat } from "./prepare"
 import { prepareReaction } from "./react-prepare"
 import { recordReaction } from "./record-action"
 import { reactResult } from "./result"
 import { labelTargets } from "./targets"
+import { MESSAGE_WORDS } from "./words"
 
 const REACT_METHOD = "sendReaction"
 
@@ -28,11 +30,49 @@ export const signalMessageReact = defineTool({
     "A failure `uncertain` means the reaction may have gone out: check the chat on the phone, never repeat it blindly.",
     "A reaction is recorded in the local mirror; `errors.record` says when that failed although the reaction was sent.",
   ].join(" "),
+  intent: MESSAGE_WORDS.reactIntent,
   toolset: "actions",
   class: "overwrite",
   input: reactInput,
   output: reactOutput,
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
+  async describe(args, ctx) {
+    const request = reactionRequest(args)
+    const target = messageReference(args.id, "id")
+    return withMirror(ctx, args.account, (mirror, me) => {
+      const now = Date.now()
+      const prepared = prepareChat(mirror, me, args.chat, "react")
+      const reaction = prepareReaction(mirror, prepared, target, request, now)
+      const subject = chatSubject(mirror, prepared)
+      const values = { emoji: reaction.emoji }
+      const headline = reaction.remove
+        ? chatHeadline(
+            subject,
+            MESSAGE_WORDS.unreactHeadline,
+            MESSAGE_WORDS.unreactHeadlineNote,
+            values,
+            MESSAGE_WORDS.unreactUnnamed,
+          )
+        : chatHeadline(
+            subject,
+            MESSAGE_WORDS.reactHeadline,
+            MESSAGE_WORDS.reactHeadlineNote,
+            values,
+            MESSAGE_WORDS.reactUnnamed,
+          )
+      return {
+        headline,
+        facts: [
+          ...chatFacts(subject),
+          ...(reaction.replaces === null ? [] : [{ label: MESSAGE_WORDS.replaces, value: reaction.replaces }]),
+          ...authorFacts(subject, target.author),
+          messageTextFact(MESSAGE_WORDS.message, reaction.message),
+          ...membersFacts(subject),
+        ],
+        pins: subject.pins,
+      }
+    })
+  },
   async execute(args, ctx): Promise<ReactOutput> {
     const request = reactionRequest(args)
     const target = messageReference(args.id, "id")

@@ -2,12 +2,14 @@ import { withMirror } from "../chat/open"
 import { defineTool, StepErrors } from "../tool"
 import { checkedText, messageReference } from "./arguments"
 import { MAX_TEXT_CHARACTERS, MESSAGE_SEND_TOOL_ID } from "./constants"
+import { chatFacts, chatHeadline, chatSubject, membersFacts, replyToFacts } from "./describe"
 import { prepareSend } from "./prepare"
 import { recordSent } from "./record"
 import { sendResult } from "./result"
 import { input, output, type SendOutput } from "./schema"
 import { labelTargets } from "./targets"
 import { transmit } from "./transmit"
+import { MESSAGE_WORDS } from "./words"
 
 /** The `signal_message_send` tool definition. */
 export const signalMessageSend = defineTool({
@@ -23,11 +25,26 @@ export const signalMessageSend = defineTool({
     "A failure `uncertain` means the message may have gone out: check the chat on the phone, never send it again blindly.",
     "A send is recorded in the local mirror; `errors.record` says when that failed although the message was sent.",
   ].join(" "),
+  intent: MESSAGE_WORDS.sendIntent,
   toolset: "sends",
   class: "add",
   input,
   output,
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat),
+  async describe(args, ctx) {
+    const text = checkedText(args.text)
+    const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
+    return withMirror(ctx, args.account, (mirror, me) => {
+      const prepared = prepareSend(mirror, me, { chat: args.chat, replyTo }, Date.now())
+      const subject = chatSubject(mirror, prepared)
+      return {
+        headline: chatHeadline(subject, MESSAGE_WORDS.sendHeadline, MESSAGE_WORDS.sendHeadlineNote),
+        facts: [...chatFacts(subject), ...replyToFacts(prepared.quote), ...membersFacts(subject)],
+        text: { label: MESSAGE_WORDS.sendText, body: text },
+        pins: subject.pins,
+      }
+    })
+  },
   async execute(args, ctx): Promise<SendOutput> {
     const text = checkedText(args.text)
     const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
