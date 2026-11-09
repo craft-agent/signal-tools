@@ -66,10 +66,7 @@ export class People {
         author: null,
       })
     }
-    const nameless = ids.filter((id) => {
-      const person = this.#known.get(id)
-      return person?.name == null && person?.number == null
-    })
+    const nameless = ids.filter((id) => this.#known.get(id)?.name == null)
     if (nameless.length === 0) return
     const authors = this.#mirror
       .prepare(
@@ -93,6 +90,16 @@ export class People {
     const person = this.#known.get(id)
     if (!person) return null
     return person.name ?? person.number ?? knownNumber ?? person.author
+  }
+
+  /**
+   * The name an account goes by, never its number: the contact's name, else
+   * the name it last wrote messages under. Null when none is known, and for the
+   * user's own account. Call `load` first.
+   */
+  name(id: string): string | null {
+    const person = this.#known.get(id)
+    return person ? (person.name ?? person.author) : null
   }
 
   /** How a result names an account: `me` for the user's own, else its display name, else the account id. Call `load` first. */
