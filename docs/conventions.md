@@ -587,21 +587,30 @@ its words have a Japanese table beside it.
 - **The text a person wrote is data.** The message being sent, edited,
   reacted to or deleted is shown as it is, cut to the budget; the kind of
   chat and every unit are the tool's words and are translated.
+- **The text of a disappearing or view-once message never reaches a
+  prompt.** An approval card can be read by others and outlives the message,
+  while its sender meant it to disappear or be seen once. The fact that would
+  hold it says `(disappearing message)` or `(view-once message)` instead. The
+  text the call itself writes (a send's, an edit's new text) is still shown:
+  the user is writing it now.
+- **A write to a group also pins its members.** The prompt shows only their
+  count, so the pin is a hash of their ids and a swapped member stops the call
+  as `stale`.
 
 The facts the tools add, in the order a prompt shows them:
 
-| Fact       | Value                                                               | Tools                        |
-| ---------- | ------------------------------------------------------------------- | ---------------------------- |
-| `Chat`     | `Person` or `Group`                                                 | every tool but file save     |
-| `Replaces` | the user's reaction there now, which a new one replaces             | react                        |
-| `From`     | who wrote the message, as the mirror names them, or `you`           | react, file save             |
-| `Message`  | the text of the message acted on, or `(no text)`                    | react, delete                |
-| `Current`  | the text an edit replaces                                           | edit                         |
-| `Reply to` | the text of the message a send quotes, or `(no text)`               | message send, file send      |
-| `Members`  | `{count} members` of a group, the user included                     | every tool but file save     |
-| `Files`    | `{count} files`: a send's of several, a deleted message's, a save's | file send, delete, file save |
-| `Unpack`   | `Archives, after inspection`, when `unpack` is set                  | file save                    |
-| `Size`     | the files' total size (`sizeFact`)                                  | file send                    |
+| Fact       | Value                                                                                                              | Tools                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| `Chat`     | `Person` or `Group`                                                                                                | every tool but file save     |
+| `Replaces` | the user's reaction there now, which a new one replaces                                                            | react                        |
+| `From`     | who wrote the message, as the mirror names them, or `you`; none for the person of a person chat the headline names | react, file save             |
+| `Message`  | the text of the message acted on, `(no text)`, `(disappearing message)` or `(view-once message)`                   | react, delete                |
+| `Current`  | the text an edit replaces, or `(disappearing message)`                                                             | edit                         |
+| `Reply to` | the text of the message a send quotes, `(no text)`, `(disappearing message)` or `(view-once message)`              | message send, file send      |
+| `Members`  | `{count} members` of a group, the user included                                                                    | every tool but file save     |
+| `Files`    | `{count} files`: a send's of several, a deleted message's, a save's                                                | file send, delete, file save |
+| `Unpack`   | `Archives, after inspection`, when `unpack` is set                                                                 | file save                    |
+| `Size`     | the files' total size (`sizeFact`)                                                                                 | file send                    |
 
 A file send also pins each file's SHA-256, which the prompt does not show.
 
