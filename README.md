@@ -398,8 +398,14 @@ one `default`), and every command takes `--state-dir` like the tools.
 | `service install \| uninstall \| status`       | registers the sync service as a launchd agent (macOS) or a systemd user unit (Linux), removes it, or reports it                 |
 | `remove --account <label> [--yes]`             | uninstalls the service and deletes the label's keys, signal-cli's data, history and service log, after the label is typed back  |
 
-- **The service records this package's paths**, so run `service install`
-  again after updating the package. On macOS its log is
+- **The service records this package's paths and Node's**, so run
+  `service install` again after updating either. Where Node's path holds its
+  version, as under a version manager, `service install` records a `node` on
+  `PATH` at a path without it that starts the same Node, and warns when there
+  is none. That `node` then runs whichever Node the manager makes current.
+  `service status` and `signal_account_read` say when the recorded program is
+  gone, once the service has been installed with this version. On macOS its
+  log is
   `~/Library/Logs/io.github.craft-agent.signal-tools/<label>.log`; on Linux,
   `journalctl --user -u <unit>` as `service status` shows, and
   `loginctl enable-linger` keeps it running while you are logged out.

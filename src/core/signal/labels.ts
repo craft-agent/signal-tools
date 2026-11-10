@@ -47,6 +47,7 @@ export type LabelPaths = {
   outbox: string // <dir>/outbox
   daemonPid: string // <dir>/daemon.pid (the running daemon's process id, written by the sync service)
   syncLock: string // <dir>/sync.lock (the process id of the sync service running for the label)
+  serviceRecord: string // <dir>/service.json (what the installed sync service starts: program and script paths)
 }
 
 /**
@@ -72,6 +73,7 @@ export function labelPaths(stateDir: string, label: string): LabelPaths {
     outbox: join(dir, "outbox"),
     daemonPid: join(dir, "daemon.pid"),
     syncLock: join(dir, "sync.lock"),
+    serviceRecord: join(dir, "service.json"),
   }
   const socketBytes = Buffer.byteLength(paths.socket, "utf8")
   if (socketBytes > MAX_SOCKET_PATH_BYTES) {

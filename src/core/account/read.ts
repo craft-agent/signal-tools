@@ -13,6 +13,7 @@ import {
   STATUS_META,
   SUBSCRIBED_AT_META,
 } from "../signal/mirror-meta"
+import { missingServiceFiles, readServiceRecord } from "../signal/service-record"
 import { isAlive, readPid } from "../signal/sync-wait"
 import { formatLocalTime, localTimeSchema } from "../time"
 import { defineTool } from "../tool"
@@ -57,13 +58,20 @@ function timestamp(value: string | undefined): string | null {
   return Number.isFinite(date.getTime()) ? formatLocalTime(date.getTime()) : null
 }
 
-function nextStep(result: Account, mirrorRefused: boolean): void {
+function nextStep(result: Account, mirrorRefused: boolean, programGone: boolean): void {
   if (result.linked === "not linked") {
     result.action = "link"
     result.hint = "Link this device from the phone."
   } else if (result.linked === "unlinked") {
     result.action = "link"
     result.hint = "Signal unlinked this device; link it again from the phone."
+  } else if (programGone) {
+    // Before the mirror's refusal: a restart cannot run without the program, and installing again restarts it.
+    result.action = "start_service"
+    result.hint =
+      result.service === "running" || result.service === "starting"
+        ? "The sync service has not stopped, but the program it was installed with is gone, so it will not start again; install the service again."
+        : "The program the sync service was installed with is gone, as after an update; install the service again."
   } else if (mirrorRefused) {
     result.action = "start_service"
     result.hint =
@@ -128,7 +136,9 @@ function readAccount(paths: LabelPaths): Account {
       }
     }
   }
-  nextStep(result, mirrorRefused)
+  const record = readServiceRecord(paths)
+  const programGone = record !== null && missingServiceFiles(record).length > 0
+  nextStep(result, mirrorRefused, programGone)
   return result
 }
 
