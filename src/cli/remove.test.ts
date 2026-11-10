@@ -15,7 +15,11 @@ function fakeHost(home: string): ServiceHost {
     home,
     uid: 501,
     env: { PATH: "/bin" },
-    run: async () => ({ code: 0, stdout: "", stderr: "" }),
+    sleep: async () => {},
+    run: async (argv) =>
+      argv[1] === "print"
+        ? { code: 113, stdout: "", stderr: "Could not find service" }
+        : { code: 0, stdout: "", stderr: "" },
   }
 }
 
@@ -190,6 +194,7 @@ describe("CLI remove", () => {
         home: dir,
         uid: 501,
         env: { PATH: "/bin" },
+        sleep: async () => {},
         run: async () => ({ code: 1, stdout: "", stderr: "launchctl bootout: Operation not permitted" }),
       }
 

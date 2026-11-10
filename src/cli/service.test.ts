@@ -15,7 +15,11 @@ function fakeHost(home: string, overrides: Partial<ServiceHost> = {}): ServiceHo
     home,
     uid: 501,
     env: { PATH: "/bin" },
-    run: async () => ({ code: 0, stdout: "", stderr: "" }),
+    sleep: async () => {},
+    run: async (argv) =>
+      argv[1] === "print"
+        ? { code: 113, stdout: "", stderr: "Could not find service" }
+        : { code: 0, stdout: "", stderr: "" },
     ...overrides,
   }
 }
@@ -182,10 +186,15 @@ describe("CLI service", () => {
       writeSignalCliAccount(paths.signalCli, LINKED_ACCOUNT, true)
 
       let statusOut = ""
+      let loaded = false
       const host = fakeHost(dir, {
         run: async (argv) => {
+          if (argv[1] === "bootstrap") loaded = true
+          if (argv[1] === "bootout") loaded = false
           if (argv[1] === "print") {
-            return { code: 0, stdout: "state = running\npid = 1234\nlast exit code = 0\n", stderr: "" }
+            return loaded
+              ? { code: 0, stdout: "state = running\npid = 1234\nlast exit code = 0\n", stderr: "" }
+              : { code: 113, stdout: "", stderr: "Could not find service" }
           }
           return { code: 0, stdout: "", stderr: "" }
         },
