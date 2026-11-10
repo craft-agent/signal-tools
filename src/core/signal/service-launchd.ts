@@ -1,6 +1,7 @@
-import { chmod, lstat, mkdir, rmdir, stat, unlink, writeFile } from "node:fs/promises"
-import { dirname, join } from "node:path"
+import { chmod, lstat, mkdir, rename, rmdir, stat, unlink, writeFile } from "node:fs/promises"
+import { basename, dirname, join } from "node:path"
 import {
+  checkLauncherName,
   checkServiceSpecControlChars,
   mapProgramError,
   type ServiceHost,
@@ -8,6 +9,9 @@ import {
   type ServiceStatus,
 } from "./service-types"
 import type { ExecResult } from "../exec"
+
+/** Hands over to the program and arguments after it, so the agent is listed under the script's own name. */
+export const LAUNCHER_SCRIPT = '#!/bin/sh\nexec "$@"\n'
 
 /** Escapes special XML characters in string values for plist generation. */
 export function xmlEscape(text: string): string {
@@ -20,10 +24,11 @@ export function xmlEscape(text: string): string {
 }
 
 /** Builds the launchd property list XML content. */
-export function buildLaunchdPlist(spec: ServiceSpec, logPath: string): string {
+export function buildLaunchdPlist(spec: ServiceSpec, logPath: string, launcherPath: string): string {
   checkServiceSpecControlChars(spec)
+  checkLauncherName(spec.launcher)
   const agentLabel = `${spec.id}.${spec.label}`
-  const allArgs = [spec.program, ...spec.args]
+  const allArgs = [launcherPath, spec.program, ...spec.args]
   const argsXml = allArgs.map((arg) => `\t\t<string>${xmlEscape(arg)}</string>`).join("\n")
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -69,6 +74,12 @@ function launchdPaths(id: string, label: string, home: string) {
   return { agentLabel, plistPath, logDir, logPath }
 }
 
+function launcherPaths(id: string, label: string, launcher: string, home: string) {
+  const launcherDir = join(home, "Library", "Application Support", id)
+  const launcherPath = join(launcherDir, `${launcher}-${label}`)
+  return { launcherDir, launcherPath }
+}
+
 function isLaunchdNotLoaded(result: ExecResult): boolean {
   if (result.code === 0) return true
   const text = `${result.stderr} ${result.stdout}`.toLowerCase()
@@ -88,12 +99,28 @@ export async function installLaunchdService(
   host: ServiceHost,
 ): Promise<{ file: string; log: string }> {
   checkServiceSpecControlChars(spec)
+  checkLauncherName(spec.launcher)
   const { agentLabel, plistPath, logDir, logPath } = launchdPaths(spec.id, spec.label, host.home)
+  const { launcherDir, launcherPath } = launcherPaths(spec.id, spec.label, spec.launcher, host.home)
 
   await mkdir(logDir, { recursive: true, mode: 0o700 })
   await chmod(logDir, 0o700)
 
-  const plistContent = buildLaunchdPlist(spec, logPath)
+  await mkdir(launcherDir, { recursive: true, mode: 0o700 })
+  await chmod(launcherDir, 0o700)
+  // Renamed into place, so a running agent never finds the launcher missing,
+  // and a link at its path is replaced rather than followed.
+  const staging = join(launcherDir, `.${basename(launcherPath)}.tmp`)
+  try {
+    await unlink(staging)
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+  }
+  await writeFile(staging, LAUNCHER_SCRIPT, { encoding: "utf8", mode: 0o755, flag: "wx" })
+  await chmod(staging, 0o755)
+  await rename(staging, launcherPath)
+
+  const plistContent = buildLaunchdPlist(spec, logPath, launcherPath)
   await mkdir(dirname(plistPath), { recursive: true, mode: 0o755 })
   await writeFile(plistPath, plistContent, { encoding: "utf8", mode: 0o644 })
   await chmod(plistPath, 0o644)

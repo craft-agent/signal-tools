@@ -16,6 +16,9 @@ import { EXIT_OK, type CommandIo } from "./command-io"
 
 export const SERVICE_ID = "io.github.craft-agent.signal-tools"
 
+/** The name the macOS Login Items list shows for the agent, before `-<label>`. */
+export const SERVICE_LAUNCHER = `${PROJECT.name}-sync`
+
 const WINDOWS_TRACKING_URL = "https://github.com/craft-agent/signal-tools/issues/11"
 
 type ServiceAction = "install" | "uninstall" | "status"
@@ -107,6 +110,7 @@ export async function runServiceCommand(argv: string[], io: CommandIo): Promise<
         program: self.program,
         args: [self.script, "sync", "--account", label, "--state-dir", parsed.stateDir],
         path: io.env.PATH ?? process.env.PATH ?? "",
+        launcher: SERVICE_LAUNCHER,
       }
 
       const result = await installService(spec, host)

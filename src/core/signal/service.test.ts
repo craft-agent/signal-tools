@@ -17,6 +17,7 @@ describe("service dispatcher", () => {
     program: "/bin/node",
     args: [],
     path: "/bin",
+    launcher: "example-sync",
   }
 
   test("refuses unsupported platforms with invalid_argument", async () => {

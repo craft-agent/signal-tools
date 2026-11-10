@@ -21,6 +21,11 @@ export type ServiceSpec = {
   args: string[]
   /** The PATH environment variable value for the service. */
   path: string
+  /**
+   * The file name the launcher script is given, before `-<label>`; the agent is
+   * listed under it where the platform names background items after their program.
+   */
+  launcher: string
 }
 
 /** The host environment running the service commands. */
@@ -80,6 +85,19 @@ export function checkServiceSpecControlChars(spec: ServiceSpec): void {
   }
   if (CONTROL_CHARACTERS.test(spec.path)) {
     throw new ToolError("invalid_argument", "Control characters are not allowed in PATH.")
+  }
+}
+
+/** A launcher name safe as a file name: it starts with a letter or digit and holds no separator. */
+const LAUNCHER_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+
+/** Refuses a launcher name that is not a plain file name. */
+export function checkLauncherName(name: string): void {
+  if (!LAUNCHER_NAME.test(name)) {
+    throw new ToolError(
+      "invalid_argument",
+      "The launcher name may hold only letters, digits, dots, hyphens and underscores, and must start with a letter or digit.",
+    )
   }
 }
 
