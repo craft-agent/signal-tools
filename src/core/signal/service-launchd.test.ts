@@ -213,6 +213,79 @@ describe("service-launchd", () => {
       }
     })
 
+    const name = { id: spec.id, launcher: spec.launcher }
+
+    test("uninstalling deletes the launcher and its directory", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "sig-"))
+      try {
+        const { host } = createFakeHost(dir)
+        await installLaunchdService(spec, host)
+        const launcherPath = join(dir, launcherRelative)
+
+        await uninstallLaunchdService(name, spec.label, host)
+
+        await expect(lstat(launcherPath)).rejects.toThrow()
+        await expect(lstat(dirname(launcherPath))).rejects.toThrow()
+      } finally {
+        await rm(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("uninstalling one label keeps the launcher of another", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "sig-"))
+      try {
+        const { host } = createFakeHost(dir)
+        await installLaunchdService(spec, host)
+        await installLaunchdService({ ...spec, label: "work" }, host)
+        const launcherPath = join(dir, launcherRelative)
+        const workPath = join(dirname(launcherPath), `${spec.launcher}-work`)
+
+        await uninstallLaunchdService(name, spec.label, host)
+
+        await expect(lstat(launcherPath)).rejects.toThrow()
+        expect(await readFile(workPath, "utf8")).toBe(LAUNCHER_SCRIPT)
+      } finally {
+        await rm(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("a symlink at the launcher path is not followed when uninstalling", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "sig-"))
+      try {
+        const { host } = createFakeHost(dir)
+        const launcherPath = join(dir, launcherRelative)
+        const target = join(dir, "target.txt")
+        await writeFile(target, "keep me")
+        await mkdir(dirname(launcherPath), { recursive: true })
+        await symlink(target, launcherPath)
+
+        await uninstallLaunchdService(name, spec.label, host)
+
+        expect(await readFile(target, "utf8")).toBe("keep me")
+        expect((await lstat(launcherPath)).isSymbolicLink()).toBe(true)
+      } finally {
+        await rm(dir, { recursive: true, force: true })
+      }
+    })
+
+    test("an invalid launcher name is refused only after the agent is unloaded", async () => {
+      const dir = await mkdtemp(join(tmpdir(), "sig-"))
+      try {
+        const { host, calls } = createFakeHost(dir)
+        const { file } = await installLaunchdService(spec, host)
+
+        const error = await uninstallLaunchdService({ ...name, launcher: "../x" }, spec.label, host).catch(
+          (e: unknown) => e,
+        )
+
+        expect((error as { code: string }).code).toBe("invalid_argument")
+        expect(calls.at(-1)).toEqual(["launchctl", "bootout", `gui/501/${spec.id}.${spec.label}`])
+        await expect(lstat(file)).rejects.toThrow()
+      } finally {
+        await rm(dir, { recursive: true, force: true })
+      }
+    })
+
     test("refuses an invalid launcher name and writes nothing", async () => {
       for (const launcher of ["", "../x", "a/b", ".hidden"]) {
         const dir = await mkdtemp(join(tmpdir(), "sig-"))
@@ -274,8 +347,9 @@ describe("service-launchd", () => {
       })
 
       // When plist does not exist, uninstalling should succeed without error
-      await uninstallLaunchdService("io.github.craft-agent.signal-tools", "default", host)
+      await uninstallLaunchdService({ id: "io.github.craft-agent.signal-tools", launcher: LAUNCHER }, "default", host)
       expect(calls[0]).toEqual(["launchctl", "bootout", "gui/501/io.github.craft-agent.signal-tools.default"])
+      expect(await readdir(dir)).toEqual([])
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

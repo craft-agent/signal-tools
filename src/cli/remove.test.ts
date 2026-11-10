@@ -7,7 +7,7 @@ import type { ServiceHost } from "../core/signal/service"
 import { PROJECT } from "../project"
 import { EXIT_FAILED, EXIT_OK, EXIT_USAGE } from "./command-io"
 import { runRemoveCommand } from "./remove"
-import { SERVICE_ID } from "./service"
+import { SERVICE_ID, SERVICE_LAUNCHER } from "./service"
 
 function fakeHost(home: string): ServiceHost {
   return {
@@ -103,6 +103,29 @@ describe("CLI remove", () => {
 
       expect(code).toBe(EXIT_OK)
       expect(await stat(logDir).catch(() => undefined)).toBeUndefined()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test("deletes the launcher script along with the label", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sig-"))
+    try {
+      await ensureLabelDir(dir, "work")
+      const launcherDir = join(dir, "Library", "Application Support", SERVICE_ID)
+      await mkdir(launcherDir, { recursive: true })
+      await writeFile(join(launcherDir, `${SERVICE_LAUNCHER}-work`), "x")
+
+      const code = await runRemoveCommand(["--account", "work", "--yes", "--state-dir", dir], {
+        env: {},
+        isTTY: false,
+        stdout: () => {},
+        stderr: () => {},
+        serviceHost: fakeHost(dir),
+      })
+
+      expect(code).toBe(EXIT_OK)
+      expect(await stat(launcherDir).catch(() => undefined)).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

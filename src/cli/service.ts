@@ -8,6 +8,7 @@ import {
   serviceStatus,
   uninstallService,
   type ServiceHost,
+  type ServiceName,
   type ServiceSpec,
 } from "../core/signal/service"
 import { PROJECT } from "../project"
@@ -18,6 +19,9 @@ export const SERVICE_ID = "io.github.craft-agent.signal-tools"
 
 /** The name the macOS Login Items list shows for the agent, before `-<label>`. */
 export const SERVICE_LAUNCHER = `${PROJECT.name}-sync`
+
+/** What names the service on disk, passed to uninstall. */
+export const SERVICE_NAME: ServiceName = { id: SERVICE_ID, launcher: SERVICE_LAUNCHER }
 
 const WINDOWS_TRACKING_URL = "https://github.com/craft-agent/signal-tools/issues/11"
 
@@ -129,7 +133,7 @@ export async function runServiceCommand(argv: string[], io: CommandIo): Promise<
     }
 
     if (parsed.action === "uninstall") {
-      await uninstallService(SERVICE_ID, label, host)
+      await uninstallService(SERVICE_NAME, label, host)
       io.stdout(`Uninstalled sync service for "${label}".\n`)
       return EXIT_OK
     }

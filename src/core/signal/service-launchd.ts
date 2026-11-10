@@ -5,6 +5,7 @@ import {
   checkServiceSpecControlChars,
   mapProgramError,
   type ServiceHost,
+  type ServiceName,
   type ServiceSpec,
   type ServiceStatus,
 } from "./service-types"
@@ -138,9 +139,12 @@ export async function installLaunchdService(
   return { file: plistPath, log: logPath }
 }
 
-/** Unloads and deletes the launchd agent on macOS. */
-export async function uninstallLaunchdService(id: string, label: string, host: ServiceHost): Promise<void> {
-  const { agentLabel, plistPath } = launchdPaths(id, label, host.home)
+/**
+ * Unloads and deletes the launchd agent on macOS, with its launcher script and
+ * the launcher's directory once empty.
+ */
+export async function uninstallLaunchdService(name: ServiceName, label: string, host: ServiceHost): Promise<void> {
+  const { agentLabel, plistPath } = launchdPaths(name.id, label, host.home)
 
   const bootoutResult = await host.run(["launchctl", "bootout", `gui/${host.uid}/${agentLabel}`])
   if (!isLaunchdNotLoaded(bootoutResult)) {
@@ -152,6 +156,32 @@ export async function uninstallLaunchdService(id: string, label: string, host: S
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
   }
+
+  // Checked only once the agent is gone: a caller that reads a refusal as
+  // "no service here" must not leave a loaded agent behind.
+  checkLauncherName(name.launcher)
+  const { launcherDir, launcherPath } = launcherPaths(name.id, label, name.launcher, host.home)
+  await removeFileThenEmptyDir(launcherPath, launcherDir)
+}
+
+/**
+ * Deletes `path` when it is a regular file, never following a link, then `dir`
+ * when nothing else is in it. Whatever cannot be tidied is left alone.
+ */
+async function removeFileThenEmptyDir(path: string, dir: string): Promise<void> {
+  try {
+    if ((await lstat(path)).isFile()) await unlink(path)
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code !== "ENOENT" && code !== "ENOTDIR") throw err
+  }
+
+  try {
+    await rmdir(dir)
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOENT" && code !== "ENOTDIR") throw err
+  }
 }
 
 /**
@@ -162,20 +192,7 @@ export async function uninstallLaunchdService(id: string, label: string, host: S
  */
 export async function removeLaunchdLog(id: string, label: string, host: ServiceHost): Promise<void> {
   const { logDir, logPath } = launchdPaths(id, label, host.home)
-
-  try {
-    if ((await lstat(logPath)).isFile()) await unlink(logPath)
-  } catch (err: unknown) {
-    const code = (err as NodeJS.ErrnoException).code
-    if (code !== "ENOENT" && code !== "ENOTDIR") throw err
-  }
-
-  try {
-    await rmdir(logDir)
-  } catch (err: unknown) {
-    const code = (err as NodeJS.ErrnoException).code
-    if (code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOENT" && code !== "ENOTDIR") throw err
-  }
+  await removeFileThenEmptyDir(logPath, logDir)
 }
 
 /** Checks the launchd agent status on macOS. */

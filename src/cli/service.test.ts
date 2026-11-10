@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ensureLabelDir, labelPaths } from "../core/signal/labels"
@@ -225,6 +225,7 @@ describe("CLI service", () => {
       })
       expect(unCode).toBe(EXIT_OK)
       expect(uninstallOut).toBe('Uninstalled sync service for "default".\n')
+      expect(await stat(join(dir, "Library", "Application Support", SERVICE_ID)).catch(() => undefined)).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
