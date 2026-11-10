@@ -4,6 +4,7 @@ import {
   defaultServiceHost,
   installService,
   serviceStatus,
+  serviceWorkingDirectory,
   uninstallService,
   type ServiceHost,
   type ServiceSpec,
@@ -66,6 +67,22 @@ describe("service dispatcher", () => {
       stderr: "",
     })
     expect(emptyError.message).toBe("launchctl failed.")
+  })
+
+  test("serviceWorkingDirectory is the directory the service manager starts the service in", () => {
+    const host = (platform: NodeJS.Platform): ServiceHost => ({
+      platform,
+      home: "/home/test",
+      uid: 1000,
+      env: {},
+      run: async () => ({ code: 0, stdout: "", stderr: "" }),
+    })
+
+    expect(serviceWorkingDirectory(host("darwin"))).toBe("/")
+    expect(serviceWorkingDirectory(host("linux"))).toBe("/home/test")
+    expect(() => serviceWorkingDirectory(host("win32"))).toThrow(
+      "Running the sync service is supported on macOS and Linux only.",
+    )
   })
 
   test("defaultServiceHost provides required host properties", () => {
