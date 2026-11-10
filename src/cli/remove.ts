@@ -4,7 +4,7 @@ import { removeLabel } from "../core/signal/removal"
 import { defaultServiceHost, removeServiceLog, uninstallService } from "../core/signal/service"
 import { handleCommandError, parseCommandStateDir, parseFlagArgs, printCommandError, usageError } from "./command-args"
 import { defaultReadLine, EXIT_FAILED, EXIT_OK, EXIT_USAGE, type CommandIo } from "./command-io"
-import { SERVICE_ID } from "./service"
+import { SERVICE_ID, SERVICE_NAME } from "./service"
 
 type RemoveArgs = {
   label: string
@@ -71,7 +71,7 @@ export async function runRemoveCommand(argv: string[], io: CommandIo): Promise<n
       label,
       uninstall: async () => {
         try {
-          await uninstallService(SERVICE_ID, label, host)
+          await uninstallService(SERVICE_NAME, label, host)
         } catch (error) {
           // On unsupported platforms, services cannot be installed so removal may proceed.
           if (isToolError(error) && error.code === "invalid_argument") {

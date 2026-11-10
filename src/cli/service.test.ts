@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ensureLabelDir, labelPaths } from "../core/signal/labels"
@@ -7,7 +7,7 @@ import type { ServiceHost } from "../core/signal/service"
 import { LINKED_ACCOUNT, writeSignalCliAccount } from "../core/signal/signal-cli.testing"
 import { PROJECT } from "../project"
 import { EXIT_FAILED, EXIT_OK, EXIT_USAGE, type CommandIo } from "./command-io"
-import { runServiceCommand } from "./service"
+import { runServiceCommand, SERVICE_ID, SERVICE_LAUNCHER } from "./service"
 
 function fakeHost(home: string, overrides: Partial<ServiceHost> = {}): ServiceHost {
   return {
@@ -40,6 +40,12 @@ describe("CLI service", () => {
       expect(code).toBe(EXIT_OK)
       expect(stdout).toContain('Installed sync service for "default"')
       expect(stderr).toBe("")
+
+      const plist = await readFile(join(dir, "Library", "LaunchAgents", `${SERVICE_ID}.default.plist`), "utf8")
+      const launcherPath = join(dir, "Library", "Application Support", SERVICE_ID, `${SERVICE_LAUNCHER}-default`)
+      expect(plist).toContain(
+        `<array>\n\t\t<string>${launcherPath}</string>\n\t\t<string>/bin/node</string>\n\t\t<string>/bin/cli.js</string>`,
+      )
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -219,6 +225,7 @@ describe("CLI service", () => {
       })
       expect(unCode).toBe(EXIT_OK)
       expect(uninstallOut).toBe('Uninstalled sync service for "default".\n')
+      expect(await stat(join(dir, "Library", "Application Support", SERVICE_ID)).catch(() => undefined)).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
