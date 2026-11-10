@@ -403,6 +403,11 @@ one `default`), and every command takes `--state-dir` like the tools.
   `~/Library/Logs/io.github.craft-agent.signal-tools/<label>.log`; on Linux,
   `journalctl --user -u <unit>` as `service status` shows, and
   `loginctl enable-linger` keeps it running while you are logged out.
+- **On macOS, Login Items lists the service as `signal-tools-sync-<label>`**:
+  the agent starts through that launcher script, which `service install`
+  writes to
+  `~/Library/Application Support/io.github.craft-agent.signal-tools/` and
+  `service uninstall` deletes. Switching the item off there stops receiving.
 - **A phone takes at most five linked devices**, and each label is one of
   them.
 - **Removing a label does not unlink it on the phone**: a linked device cannot
