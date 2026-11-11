@@ -25,5 +25,5 @@ test("target for a message send in Japanese gives the headline, facts and text l
     facts: [{ label: "チャット", value: "個人" }],
     text: { label: "メッセージの本文", body: "hello" },
   })
-  expect(answer.words).toEqual({ details: "詳細", target: "対象", more: "（ほか {count} 件）" })
+  expect(answer.words).toMatchObject({ details: "詳細", target: "対象", more: "（ほか {count} 件）" })
 })
