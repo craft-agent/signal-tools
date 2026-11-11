@@ -29,6 +29,9 @@ config_schema:
     description: Single tools to remove by id. Wins over tools and toolsets.
   language:
     description: The language of the approval card, such as ja. Defaults to Hermes's display language, else English.
+  emoji:
+    type: dict
+    description: 'The emoji shown beside each toolset, by toolset name; "" shows none. Merged over the package''s emoji.'
   download_dir:
     description: Where received files are saved; an absolute path, or one starting with ~. Defaults to ~/Downloads/signal-tools.
   send_dirs:
