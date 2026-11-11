@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/craft-agent/signal-tools#readme",
   "repository": "https://github.com/craft-agent/signal-tools",
-  "license": "MIT",
+  "license": "LicenseRef-AGPL-3.0-Commons-Clause",
   "mcpServers": {
     "signal-tools": {
       "command": "node",
