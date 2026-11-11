@@ -25,11 +25,14 @@ describe("settingVariables", () => {
       "DEMO_STATE_DIR",
       "DEMO_DOWNLOAD_DIR",
       "DEMO_SEND_DIRS",
+      "DEMO_NOTE_TEXT",
     ])
   })
 
   test("uses the package's own prefix by default", () => {
-    expect(settingVariables()).toEqual(settingVariables({ ...profile, envPrefix: PROJECT.envPrefix }))
+    expect(settingVariables()).toEqual(
+      settingVariables({ ...profile, envPrefix: PROJECT.envPrefix, options: PROJECT.options }),
+    )
   })
 })
 
@@ -47,6 +50,7 @@ describe("parseSettings", () => {
   test("defaults to the harness confirming and no other setting", () => {
     expect(parse([])).toEqual({
       confirm: "harness",
+      options: {},
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -81,6 +85,7 @@ describe("parseSettings", () => {
       state_dir: "/custom/state",
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/send"],
+      options: {},
     })
   })
 
@@ -105,6 +110,7 @@ describe("parseSettings", () => {
       state_dir: "/custom/state",
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/a", "/custom/b"],
+      options: {},
     })
   })
 
@@ -129,6 +135,7 @@ describe("parseSettings", () => {
       state_dir: "/env/state",
       download_dir: "/env/downloads",
       send_dirs: ["/env/a", "/env/b"],
+      options: {},
     })
   })
 
@@ -201,12 +208,14 @@ describe("parseSettings", () => {
       state_dir: "/flag/state",
       download_dir: "/flag/downloads",
       send_dirs: ["/flag/send"],
+      options: {},
     })
   })
 
   test("an empty environment variable counts as unset", () => {
     expect(parse([], { DEMO_TOOLSETS: "", DEMO_CONFIRM: " ", DEMO_DOWNLOAD_DIR: " ", DEMO_SEND_DIRS: " " })).toEqual({
       confirm: "harness",
+      options: {},
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -278,7 +287,12 @@ describe("parseSettings", () => {
 
 describe("parseToolSettings", () => {
   test("reads the tool settings and gives no confirm setting", () => {
-    expect(parseTool([])).toEqual({ state_dir: expect.any(String), download_dir: expect.any(String), send_dirs: [] })
+    expect(parseTool([])).toEqual({
+      options: {},
+      state_dir: expect.any(String),
+      download_dir: expect.any(String),
+      send_dirs: [],
+    })
     expect(
       parseTool(
         ["--toolsets=gamma", "--read-only", "--tools", "a", "--state-dir=/tool/state", "--download-dir=/tool/files"],
@@ -292,6 +306,7 @@ describe("parseToolSettings", () => {
       state_dir: "/tool/state",
       download_dir: "/tool/files",
       send_dirs: [],
+      options: {},
     })
   })
 
@@ -302,6 +317,7 @@ describe("parseToolSettings", () => {
 
   test("ignores DEMO_CONFIRM, even a bad one", () => {
     expect(parseTool([], { DEMO_CONFIRM: "ask" })).toEqual({
+      options: {},
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -329,5 +345,6 @@ describe("parseDirectorySettings", () => {
   test("refuses every other settings flag, naming it", () => {
     expect(failure(() => parseDirectories(["--read-only"])).message).toContain("--read-only")
     expect(failure(() => parseDirectories(["--tools", "a"])).message).toContain("--tools")
+    expect(failure(() => parseDirectories(["--note-text", "x"])).message).toContain("--note-text")
   })
 })
