@@ -1,4 +1,4 @@
-import type { ToolSpec, Translator } from "../core"
+import type { ToolOptions, ToolSpec, Translator } from "../core"
 import { DESCRIBE_TIMEOUT_MS } from "../entry/description"
 import { approvalOf } from "../entry/pin"
 import { loadSkills } from "./skills"
@@ -28,6 +28,7 @@ function v2Tool(
   ownDir: string | undefined,
   directories: PluginDirectories,
   t: Translator,
+  options: ToolOptions,
 ): V2Tool {
   return {
     name: spec.id,
@@ -43,7 +44,7 @@ function v2Tool(
             `invalid_argument: The session's directory could not be read, so ${spec.id} cannot tell what it changes; retry.`,
           )
         }
-        const toolContext = { cwd: directory, ownDir, ...directories, signal }
+        const toolContext = { cwd: directory, ownDir, ...directories, options, signal }
         const approval = await approvalOf(spec, input, toolContext, DESCRIBE_TIMEOUT_MS, t)
         const { resources, description } = approval
         pin = approval.pin
@@ -58,7 +59,7 @@ function v2Tool(
       const result = await runTool(
         spec,
         input,
-        { cwd: directory ?? process.cwd(), ownDir, ...directories, signal },
+        { cwd: directory ?? process.cwd(), ownDir, ...directories, options, signal },
         pin,
       )
       return { content: JSON.stringify(result), output: result }
@@ -77,7 +78,7 @@ export function createV2Setup(specs: ToolSpec[], deps: PluginDeps = {}): OpenCod
   return async function setup(ctx: V2Context): Promise<void> {
     const selection = selectedTools(specs, ctx.options, deps)
     const tools = selection.tools.map((spec) =>
-      v2Tool(ctx, spec, deps.ownDir, selection.directories, selection.translator),
+      v2Tool(ctx, spec, deps.ownDir, selection.directories, selection.translator, selection.options),
     )
     const skills =
       deps.skillsDir === undefined
