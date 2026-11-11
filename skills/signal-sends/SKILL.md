@@ -1,6 +1,8 @@
 ---
 name: signal-sends
 description: "Use when sending a Signal text to a person, a group or Note to Self, or replying to a message; also when a send fails or its outcome is unclear."
+metadata:
+  toolset: sends
 ---
 
 # Sends

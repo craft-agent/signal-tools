@@ -1,6 +1,8 @@
 ---
 name: signal-files
 description: "Use when saving the files someone sent in a Signal message to disk, looking inside a received archive, unpacking one, or sending files to a chat."
+metadata:
+  toolset: files
 ---
 
 # Files
