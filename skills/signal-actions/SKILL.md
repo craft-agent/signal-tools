@@ -1,6 +1,8 @@
 ---
 name: signal-actions
 description: "Use when editing a Signal message the user sent, deleting one for everyone, or reacting to a message with an emoji or removing a reaction; also when such an action fails or its outcome is unclear."
+metadata:
+  toolset: actions
 ---
 
 # Actions

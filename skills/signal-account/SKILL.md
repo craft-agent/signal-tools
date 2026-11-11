@@ -1,6 +1,8 @@
 ---
 name: signal-account
 description: "Use when checking which Signal accounts are linked, whether receiving is healthy, or what setup needs attention."
+metadata:
+  toolset: account
 ---
 
 # Account status

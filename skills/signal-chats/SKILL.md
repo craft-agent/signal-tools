@@ -1,6 +1,8 @@
 ---
 name: signal-chats
 description: "Use when finding a Signal chat, reading its messages, searching what people wrote, or reading the messages around one."
+metadata:
+  toolset: chats
 ---
 
 # Chats and messages

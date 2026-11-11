@@ -1,6 +1,8 @@
 ---
 name: signal-contacts
 description: "Use when finding a Signal contact or checking whether a phone number can be reached and learning its chat id."
+metadata:
+  toolset: contacts
 ---
 
 # Contacts
