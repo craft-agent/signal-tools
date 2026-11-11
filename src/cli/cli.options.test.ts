@@ -32,6 +32,15 @@ describe("command-line tool options", () => {
     }
   })
 
+  test("target takes the directory flags beside the tool options and no selection flag", async () => {
+    const flags = ["--state-dir", "/work/state", "--download-dir=/work/files", "--note-text", "from flag"]
+    const target = await cli(["target", NOTE_ID, "--cwd", "/work/project", ...flags], "", { specs: [noteSpec] })
+    expect(target.code).toBe(EXIT_OK)
+    expect(json(target).description.facts).toContainEqual({ label: "Note", value: "from flag" })
+    const refused = await cli(["target", NOTE_ID, "--cwd", "/work/project", "--read-only"], "", { specs: [noteSpec] })
+    expect(refused.code).toBe(EXIT_USAGE)
+  })
+
   test("run without options gets an empty set", async () => {
     expect(json(await cli(["run", NOTE_ID, "--cwd", "/work/project"], "", { specs: [noteSpec] }))).toEqual({
       result: { options: {} },

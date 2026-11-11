@@ -27,6 +27,21 @@ class ToolOptionsTest(FakeCliCase):
         )
         self.assertEqual(json.loads(calls[1]["stdin"]), {"target": "north"})
 
+    def test_options_follow_the_directory_and_language_flags(self) -> None:
+        self.reply("run demo_thing_create", stdout='{"result":{}}')
+        self.reply("target demo_thing_create", stdout='{"resources":["north"]}')
+        with mock.patch.object(project, "OPTIONS", {"note_text": "text"}):
+            ctx = self.register({"note_text": "hello", "state_dir": "/state", "toolsets": ["things"], "language": "ja"})
+        ctx.tools["demo_thing_create"]["handler"]({"target": "north"})
+        ctx.hooks[0][1](tool_name="demo_thing_create", args={"target": "north"})
+        calls = self.calls()
+        own = ["--state-dir", "/state"]
+        self.assertEqual(calls[0]["argv"], ["list", "--toolsets", "things", *own, "--note-text", "hello"])
+        self.assertEqual(
+            calls[2]["argv"],
+            ["target", "demo_thing_create", "--cwd", CWD, *own, "--language=ja", "--note-text", "hello"],
+        )
+
     def test_wrong_option_types_register_nothing(self) -> None:
         with mock.patch.object(project, "OPTIONS", {"note_count": "number"}):
             ctx = self.register({"note_count": True})
