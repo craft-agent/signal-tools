@@ -144,7 +144,7 @@ def option_flags(ctx: PluginContext, options: Mapping[str, str | dict[str, objec
 
 
 def settings_flags(ctx: PluginContext) -> list[str]:
-    """Read the plugin's settings and return the flags that say the same.
+    """Read ``toolsets``, ``read_only``, ``tools``, ``exclude_tools`` and the tool options and return the flags that say the same.
 
     A setting that is absent gives no flag, so the command line's own defaults
     (and ``SIGNAL_TOOLS_*`` variables) apply. A wrong type is refused rather
@@ -171,7 +171,5 @@ def settings_flags(ctx: PluginContext) -> list[str]:
         value = ctx.get_config(key)
         if value is not None and (names := _names(key, value)):
             flags += [flag, names]
-
-    flags += directory_flags(ctx)
 
     return [*flags, *option_flags(ctx)]

@@ -1,6 +1,7 @@
 import { isAbortError, isToolError, ToolError } from "../core"
+import { resolveDirectorySettings } from "../entry/directory"
 import { PROJECT_PROFILE } from "../entry/profile"
-import { parseStateDir } from "../entry/settings"
+import { parseToolOptions } from "../entry/settings"
 import { PROJECT } from "../project"
 import { EXIT_FAILED, EXIT_USAGE, type CommandIo } from "./command-io"
 
@@ -96,7 +97,19 @@ export function parseFlagArgs<V extends string = string, S extends string = stri
   return { values, switches, rest }
 }
 
-/** Resolves the state directory from remaining command-line arguments and environment settings. */
+const STATE_DIR_OPTION = "state_dir"
+
+/**
+ * Resolves the state directory from remaining command-line arguments and
+ * environment settings. It is the only setting these commands take: any other
+ * settings flag is `invalid_argument`.
+ */
 export function parseCommandStateDir(rest: string[], io: CommandIo): string {
-  return parseStateDir(rest, io.env, io.profile ?? PROJECT_PROFILE)
+  const profile = io.profile ?? PROJECT_PROFILE
+  const declaration = profile.options?.[STATE_DIR_OPTION]
+  const options = parseToolOptions(rest, io.env, {
+    ...profile,
+    options: declaration === undefined ? {} : { [STATE_DIR_OPTION]: declaration },
+  })
+  return resolveDirectorySettings(options, io.env, profile).state_dir
 }

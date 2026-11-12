@@ -4,10 +4,7 @@ import { join } from "node:path"
 import type { EntryProfile } from "./profile"
 import {
   forwardedVariables,
-  parseDirectorySettings,
   parseSettings,
-  parseStateDir,
-  parseTargetSettings,
   parseToolOptions,
   parseToolSettings,
   settingsFromOptions,
@@ -103,38 +100,6 @@ describe("parseToolOptions", () => {
       expect(failure(() => parseToolOptions([flag], {}, typedProfile)).message).toContain(flag.split("=")[0]!)
     },
   )
-})
-
-describe("parseTargetSettings", () => {
-  const parseTarget = (argv: string[], variables: Record<string, string | undefined> = {}) =>
-    parseTargetSettings(argv, variables, typedProfile)
-
-  test("reads the directory settings and the options together, flags winning", () => {
-    const target = parseTarget(["--state-dir=/flag/state", "--send-dirs", "/a,/b", ...flags], {
-      ...env,
-      DEMO_DOWNLOAD_DIR: "/env/files",
-      DEMO_STATE_DIR: "/env/state",
-    })
-    expect(target).toEqual({
-      state_dir: "/flag/state",
-      download_dir: "/env/files",
-      send_dirs: ["/a", "/b"],
-      options: flagOptions,
-    })
-    expect(parseTarget([], env).options).toEqual(envOptions)
-  })
-
-  test.each(["--toolsets=alpha", "--confirm=harness", "--read-only", "--tools=a", "--exclude-tools=a"])(
-    "refuses the selection flag %s, naming it",
-    (flag) => {
-      expect(failure(() => parseTarget([flag])).message).toContain(flag.split("=")[0]!)
-    },
-  )
-
-  test("the commands that take no options refuse their flags", () => {
-    expect(failure(() => parseStateDir(["--a-b=x"], {}, typedProfile)).message).toContain("--a-b")
-    expect(failure(() => parseDirectorySettings(["--count=1"], {}, typedProfile)).message).toContain("--count")
-  })
 })
 
 describe("plugin tool options", () => {

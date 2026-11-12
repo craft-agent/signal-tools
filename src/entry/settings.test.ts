@@ -1,13 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { PROJECT } from "../project"
 import type { EntryProfile } from "./profile"
-import {
-  forwardedVariables,
-  parseDirectorySettings,
-  parseSettings,
-  parseToolSettings,
-  settingVariables,
-} from "./settings"
+import { forwardedVariables, parseSettings, parseToolSettings, settingVariables } from "./settings"
 import { failure, profile } from "./settings.testing"
 
 const parse = (argv: string[], env: Record<string, string | undefined> = {}) => parseSettings(argv, env, profile)
@@ -85,7 +79,7 @@ describe("parseSettings", () => {
       state_dir: "/custom/state",
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/send"],
-      options: {},
+      options: { state_dir: "/custom/state", download_dir: "/custom/downloads", send_dirs: ["/custom/send"] },
     })
   })
 
@@ -110,7 +104,11 @@ describe("parseSettings", () => {
       state_dir: "/custom/state",
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/a", "/custom/b"],
-      options: {},
+      options: {
+        state_dir: "/custom/state",
+        download_dir: "/custom/downloads",
+        send_dirs: ["/custom/a", "/custom/b"],
+      },
     })
   })
 
@@ -135,7 +133,7 @@ describe("parseSettings", () => {
       state_dir: "/env/state",
       download_dir: "/env/downloads",
       send_dirs: ["/env/a", "/env/b"],
-      options: {},
+      options: { state_dir: "/env/state", download_dir: "/env/downloads", send_dirs: ["/env/a", "/env/b"] },
     })
   })
 
@@ -208,7 +206,7 @@ describe("parseSettings", () => {
       state_dir: "/flag/state",
       download_dir: "/flag/downloads",
       send_dirs: ["/flag/send"],
-      options: {},
+      options: { state_dir: "/flag/state", download_dir: "/flag/downloads", send_dirs: ["/flag/send"] },
     })
   })
 
@@ -219,6 +217,14 @@ describe("parseSettings", () => {
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
+    })
+  })
+
+  test("an explicitly blank directory counts as unset in a flag as in a variable", () => {
+    const home = { HOME: "/home/user" }
+    expect(parse(["--state-dir= ", "--download-dir="], { ...home, DEMO_STATE_DIR: "/env/state" })).toMatchObject({
+      state_dir: "/home/user/.local/state/demo-tools",
+      download_dir: "/home/user/Downloads/demo-tools",
     })
   })
 
@@ -306,7 +312,7 @@ describe("parseToolSettings", () => {
       state_dir: "/tool/state",
       download_dir: "/tool/files",
       send_dirs: [],
-      options: {},
+      options: { state_dir: "/tool/state", download_dir: "/tool/files" },
     })
   })
 
@@ -322,29 +328,5 @@ describe("parseToolSettings", () => {
       download_dir: expect.any(String),
       send_dirs: [],
     })
-  })
-})
-
-describe("parseDirectorySettings", () => {
-  const parseDirectories = (argv: string[], env: Record<string, string | undefined> = {}) =>
-    parseDirectorySettings(argv, env, profile)
-
-  test("reads the directories from flags and the environment, a flag winning", () => {
-    expect(parseDirectories([], { DEMO_STATE_DIR: "/env/state", DEMO_DOWNLOAD_DIR: "/env/files" })).toEqual({
-      state_dir: "/env/state",
-      download_dir: "/env/files",
-      send_dirs: [],
-    })
-    expect(
-      parseDirectories(["--state-dir=/flag/state", "--download-dir", "/flag/files"], {
-        DEMO_DOWNLOAD_DIR: "/env/files",
-      }),
-    ).toEqual({ state_dir: "/flag/state", download_dir: "/flag/files", send_dirs: [] })
-  })
-
-  test("refuses every other settings flag, naming it", () => {
-    expect(failure(() => parseDirectories(["--read-only"])).message).toContain("--read-only")
-    expect(failure(() => parseDirectories(["--tools", "a"])).message).toContain("--tools")
-    expect(failure(() => parseDirectories(["--note-text", "x"])).message).toContain("--note-text")
   })
 })
