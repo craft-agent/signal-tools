@@ -352,10 +352,13 @@ Every entry point takes the same settings:
   keyed by name, and one that is not given is absent: a neutral default means
   unset, and the tool then does nothing extra. A tool reads an option when it
   runs, so a change applies on the next call.
-- **`state_dir`**: where every account's state lives (see "Accounts and state").
-- **`download_dir`**: where received files are saved (see "Files").
-- **`send_dirs`**: the directories files may be sent from, besides the
-  working directory (see "Files").
+- **`state_dir`**: this package's `path` option, read as Options says above;
+  where every account's state lives (see "Accounts and state").
+- **`download_dir`**: this package's `path` option, read as Options says above;
+  where received files are saved (see "Files").
+- **`send_dirs`**: this package's `paths` option, read as Options says above;
+  the directories files may be sent from, besides the working directory (see
+  "Files").
 
 ## Skills
 
@@ -454,9 +457,9 @@ Every entry point takes the same settings:
   `<state root>/<label>/`, created with mode 700: signal-cli's data and keys,
   the daemon's socket, the mirror, the service record, and the short-lived
   copies of files being sent. The state root is the `state_dir` setting, by default
-  `$XDG_STATE_HOME/signal-tools`, or `~/.local/state/signal-tools` without
-  it. One directory per label means a label is moved, backed up or removed as
-  a whole, and nothing of one account sits in another's.
+  `$XDG_STATE_HOME/signal-tools` when `XDG_STATE_HOME` is absolute, else
+  `~/.local/state/signal-tools`. One directory per label means a label is moved,
+  backed up or removed as a whole, and nothing of one account sits in another's.
 - **`account` picks the label.** Left out, it picks the only linked label;
   with several, the call fails as `invalid_argument` and lists them. One
   account is the common case and needs no argument, while several never

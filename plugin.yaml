@@ -32,6 +32,8 @@ config_schema:
   emoji:
     type: dict
     description: 'The emoji shown beside each toolset, by toolset name; "" shows none. Merged over the package''s emoji.'
+  state_dir:
+    description: Where every label's state lives; an absolute path, or one starting with ~. Defaults to $XDG_STATE_HOME/signal-tools when XDG_STATE_HOME is absolute, else ~/.local/state/signal-tools.
   download_dir:
     description: Where received files are saved; an absolute path, or one starting with ~. Defaults to ~/Downloads/signal-tools.
   send_dirs:
