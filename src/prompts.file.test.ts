@@ -5,7 +5,9 @@ import { createSaveFixture, messageWithFiles, saveArgs, SENT, type SaveFixture }
 import { signalFileSend } from "./core/file/send/tool"
 import { createFileSendFixture } from "./core/file/send/tool.testing"
 import { upsertContacts } from "./core/signal/directory"
+import { messageId } from "./core/signal/ids"
 import { ALICE, NOW } from "./core/signal/mirror.testing"
+import { promptTime } from "./core/time"
 import { promptOf, withPlaceholders } from "./prompts.testing"
 
 const lines = (...parts: string[]) => parts.join("\n")
@@ -101,6 +103,40 @@ describe("the approval prompt of signal_file_send", () => {
         "メンバー: 1 人",
         "ファイル: 2 個",
         "サイズ: 2049 バイト",
+      ),
+    )
+  })
+
+  test("a group reply to another member with a file, in English", async () => {
+    expect(await prompt({ chat: GROUP, files: [{ path: "report.pdf" }], reply_to: messageId(ALICE, 2000) })).toBe(
+      lines(
+        'About to reply to "Alice" in "Team" with "report.pdf"',
+        "",
+        "--- Details ---",
+        "",
+        "Target: <work>/report.pdf",
+        `Target: ${TARGET_GROUP}`,
+        "Chat: Group",
+        `Reply to: ${promptTime(2000)} "hello team"`,
+        "Members: 1 member",
+        "Size: 2048 bytes",
+      ),
+    )
+  })
+
+  test("a group reply to another member with a file, in Japanese", async () => {
+    expect(await prompt({ chat: GROUP, files: [{ path: "report.pdf" }], reply_to: messageId(ALICE, 2000) }, "ja")).toBe(
+      lines(
+        '"Team" で "Alice" に "report.pdf" を付けて返信しようとしています',
+        "",
+        "--- 詳細 ---",
+        "",
+        "対象: <work>/report.pdf",
+        `対象: ${TARGET_GROUP}`,
+        "チャット: グループ",
+        `返信先: ${promptTime(2000)}「hello team」`,
+        "メンバー: 1 人",
+        "サイズ: 2048 バイト",
       ),
     )
   })

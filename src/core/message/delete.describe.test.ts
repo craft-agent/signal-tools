@@ -87,14 +87,14 @@ describe("a deletion in a group", () => {
 })
 
 describe("a deletion of a disappearing or view-once message", () => {
-  test("never shows its text", async () => {
+  test("shows a disappearing message's text but not a view-once message's", async () => {
     t.ownMessage(OWN + 30, { message: "fleeting", expiresInSeconds: 3600 })
     t.ownMessage(OWN + 31, { message: "look", viewOnce: true })
     const disappearing = await describeCall({ chat: ALICE, id: messageId(ME, OWN + 30) })
     const viewOnce = await describeCall({ chat: ALICE, id: messageId(ME, OWN + 31) })
-    expect(disappearing?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.disappearing } })
+    expect(disappearing?.facts).toContainEqual({ label: "Message", value: "fleeting" })
     expect(viewOnce?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.viewOnce } })
-    expect(JSON.stringify([disappearing, viewOnce])).not.toMatch(/fleeting|look/)
+    expect(JSON.stringify(viewOnce)).not.toContain("look")
   })
 })
 

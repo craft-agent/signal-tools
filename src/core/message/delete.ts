@@ -1,6 +1,7 @@
 import { readList } from "../chat/message-rows"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
+import type { StoredMention } from "../signal/mirror-parts"
 import { defineTool, StepErrors } from "../tool"
 import { deleteInput, deleteOutput, type DeleteOutput } from "./action-schema"
 import { messageReference } from "./arguments"
@@ -44,7 +45,10 @@ export const signalMessageDelete = defineTool({
         headline: chatHeadline(subject, MESSAGE_WORDS.deleteHeadline, MESSAGE_WORDS.deleteHeadlineNote),
         facts: [
           ...chatFacts(subject),
-          messageTextFact(MESSAGE_WORDS.message, message),
+          messageTextFact(subject, MESSAGE_WORDS.message, {
+            ...message,
+            mentions: readList<StoredMention>(message.mentions),
+          }),
           ...membersFacts(subject),
           ...filesFacts(readList(message.attachments).length),
         ],

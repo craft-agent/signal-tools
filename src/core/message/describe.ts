@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto"
 import { readList } from "../chat/message-rows"
+import { promptMentions } from "../chat/mentions"
 import { People } from "../chat/people"
 import type { Mirror } from "../signal/mirror"
+import type { StoredMention } from "../signal/mirror-parts"
 import type { CallFact, CallHeadline } from "../tool"
+import { promptTime } from "../time"
 import type { PreparedChat } from "./prepare"
 import type { Quote } from "./quote"
 import { MESSAGE_WORDS } from "./words"
@@ -71,6 +74,43 @@ export function chatHeadline(
   return { text: template, values: { ...values, chat: subject.name } }
 }
 
+/** The templates for a reply's headline, according to whom it answers. */
+export type ReplyHeadlines = {
+  /** A known author in a named chat. */
+  author: string
+  /** The person of a person chat. */
+  person: string
+  /** The user's own message. */
+  own: string
+  /** An author without a known name. */
+  unnamed: string
+  /** A reply in the user's own chat. */
+  noteToSelf: string
+}
+
+/** A reply's headline, naming whom it answers without numbers; none for a chat without a known name. Loads the author while the mirror is open. */
+export function replyHeadline(
+  subject: ChatSubject,
+  quote: Quote,
+  templates: ReplyHeadlines,
+  values: Record<string, string> = {},
+): CallHeadline | undefined {
+  if (subject.prepared.noteToSelf)
+    return { text: templates.noteToSelf, ...(Object.keys(values).length > 0 && { values }) }
+  if (subject.name === null) return undefined
+  const { people, prepared } = subject
+  const chat = subject.name
+  if (quote.author === people.me) return { text: templates.own, values: { ...values, chat } }
+  if (prepared.chat.kind === "person" && quote.author === prepared.chat.id) {
+    return { text: templates.person, values: { ...values, chat } }
+  }
+  people.load([quote.author])
+  const name = people.name(quote.author)
+  return name === null
+    ? { text: templates.unnamed, values: { ...values, chat } }
+    : { text: templates.author, values: { ...values, author: name, chat } }
+}
+
 /** The `Chat` fact (`Person` or `Group`, value templates without placeholders so they translate); none for Note to Self, whose headline says it. */
 export function chatFacts(subject: ChatSubject): CallFact[] {
   if (subject.prepared.noteToSelf) return []
@@ -100,29 +140,49 @@ export function writtenFact(label: string, text: string | null): CallFact {
 
 /**
  * A fact holding the text of a message that already exists. An approval card
- * can be read by others and outlives the message, so the text of a message its
- * sender meant to disappear or be seen once is never copied: the value is a
- * value template saying so. Any other message is shown by `writtenFact`.
+ * shows its text so the person knows which message, a disappearing message's
+ * too. A view-once message has no text and was meant to be seen once, so its
+ * value is a template saying so. Mentions use known names, never numbers.
  */
 export function messageTextFact(
+  subject: ChatSubject,
   label: string,
-  message: { body: string | null; view_once: number; expires_in: number },
+  message: { body: string | null; view_once: number; mentions: readonly StoredMention[] },
 ): CallFact {
   if (message.view_once) return { label, value: { text: MESSAGE_WORDS.viewOnce } }
-  if (message.expires_in > 0) return { label, value: { text: MESSAGE_WORDS.disappearing } }
-  return writtenFact(label, message.body)
+  return writtenFact(label, mentionedText(subject, message.body, message.mentions))
 }
 
-/** The `Reply to` fact: the quoted message's text as `messageTextFact` shows it; none when the call quotes nothing. */
-export function replyToFacts(quote: Quote | null): CallFact[] {
+/** Renders stored mentions with known names, never numbers. */
+function mentionedText(subject: ChatSubject, body: string | null, mentions: readonly StoredMention[]): string | null {
+  const { people } = subject
+  people.load(mentions.flatMap(({ uuid }) => (uuid === undefined ? [] : [uuid])))
+  return body === null ? null : promptMentions(body, mentions, people)
+}
+
+/** The `Reply to` fact: the pinned sent time, then the quoted text with named mentions, files, or a translated absence; none when the call quotes nothing. */
+export function replyToFacts(subject: ChatSubject, quote: Quote | null): CallFact[] {
   if (!quote) return []
-  return [
-    messageTextFact(MESSAGE_WORDS.replyTo, {
-      body: quote.text,
-      view_once: quote.viewOnce ?? 0,
-      expires_in: quote.expiresIn ?? 0,
-    }),
-  ]
+  return [{ label: MESSAGE_WORDS.replyTo, value: replyToValue(subject, quote) }]
+}
+
+/** The value of the `Reply to` fact: a value template led by the quoted message's sent time. */
+function replyToValue(subject: ChatSubject, quote: Quote): CallFact["value"] {
+  const time = promptTime(quote.timestamp)
+  if (quote.viewOnce) return { text: MESSAGE_WORDS.replyViewOnce, values: { time } }
+  const text = mentionedText(subject, quote.text, quote.textMentions ?? quote.mentions)
+  const files = quote.files ?? []
+  if (text?.trim()) return { text: MESSAGE_WORDS.replyText, values: { time, text } }
+  if (files.length > 0 && files.every((name) => name !== null)) {
+    return { text: MESSAGE_WORDS.replyFiles, values: { time, files: files.join(", ") } }
+  }
+  if (files.length > 0) {
+    return {
+      text: files.length === 1 ? MESSAGE_WORDS.replyFile : MESSAGE_WORDS.replyFilesCount,
+      values: { time, count: files.length },
+    }
+  }
+  return { text: MESSAGE_WORDS.replyNoText, values: { time } }
 }
 
 /**

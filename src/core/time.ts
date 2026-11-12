@@ -3,6 +3,7 @@ import { ToolError } from "./errors"
 
 const MS_PER_MINUTE = 60_000
 const MINUTES_PER_HOUR = 60
+const PROMPT_TIME_LENGTH = 16
 
 /** How far a zone is east of UTC, in minutes, at an instant (milliseconds since the epoch). */
 export type OffsetMinutes = (ms: number) => number
@@ -24,6 +25,11 @@ export function formatLocalTime(ms: number, offsetMinutes: OffsetMinutes = local
   const magnitude = Math.abs(offset)
   const sign = offset < 0 ? "-" : "+"
   return `${wall}${sign}${pad(Math.trunc(magnitude / MINUTES_PER_HOUR))}:${pad(magnitude % MINUTES_PER_HOUR)}`
+}
+
+/** A pinned prompt's sent time in local time to the minute, without an offset: `2026-11-07 14:03`. */
+export function promptTime(ms: number, offsetMinutes: OffsetMinutes = localOffsetMinutes): string {
+  return formatLocalTime(ms, offsetMinutes).slice(0, PROMPT_TIME_LENGTH).replace("T", " ")
 }
 
 /** Date, then optionally a time of day (seconds and fraction optional) and an offset (`Z` or `±hh:mm`). */

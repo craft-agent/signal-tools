@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import { ToolError } from "./errors"
-import { formatLocalTime, localOffsetMinutes, localTimeSchema, parseTimeArgument } from "./time"
+import { formatLocalTime, localOffsetMinutes, localTimeSchema, parseTimeArgument, promptTime } from "./time"
 
 const INSTANT = Date.UTC(2026, 10, 7, 5, 3, 12, 345)
 const at = (minutes: number) => () => minutes
+
+test("promptTime uses local time to the minute without an offset", () => {
+  expect(promptTime(INSTANT, at(540))).toBe("2026-11-07 14:03")
+  expect(promptTime(INSTANT, at(-330))).toBe("2026-11-06 23:33")
+})
 
 describe("formatLocalTime", () => {
   test.each([

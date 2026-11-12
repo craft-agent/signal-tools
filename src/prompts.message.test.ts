@@ -7,6 +7,7 @@ import { signalMessageReact } from "./core/message/react"
 import { signalMessageSend } from "./core/message/send"
 import { messageId } from "./core/signal/ids"
 import { ALICE, ME } from "./core/signal/mirror.testing"
+import { promptTime } from "./core/time"
 import type { ToolSpec } from "./core"
 import { promptOf } from "./prompts.testing"
 
@@ -50,26 +51,26 @@ const CASES: Case[] = [
     spec: signalMessageSend,
     args: { chat: ALICE, text: " Running late, 10 min. ", reply_to: REACTED },
     en: lines(
-      'About to send a message to "Alice"',
+      'About to reply to "Alice"',
       "",
       "--- Details ---",
       "",
       `Target: ${TARGET_ALICE}`,
       "Chat: Person",
-      "Reply to: hello from Alice",
+      `Reply to: ${promptTime(5000)} "hello from Alice"`,
       "",
       "--- Message text ---",
       "",
       "Running late, 10 min.",
     ),
     ja: lines(
-      '"Alice" にメッセージを送信しようとしています',
+      '"Alice" に返信しようとしています',
       "",
       "--- 詳細 ---",
       "",
       `対象: ${TARGET_ALICE}`,
       "チャット: 個人",
-      "返信先: hello from Alice",
+      `返信先: ${promptTime(5000)}「hello from Alice」`,
       "",
       "--- メッセージの本文 ---",
       "",

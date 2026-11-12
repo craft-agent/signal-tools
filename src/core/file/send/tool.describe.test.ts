@@ -3,12 +3,13 @@ import { createHash } from "node:crypto"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { GROUP } from "../../chat/read.testing"
+import { ALICE_NUMBER, CAROL, GROUP } from "../../chat/read.testing"
 import { callDescription } from "../../describe"
 import { MAX_TEXT_CHARACTERS } from "../../message/constants"
 import { MESSAGE_WORDS } from "../../message/words"
 import { messageId } from "../../signal/ids"
-import { ALICE, GROUP_ID, ME } from "../../signal/mirror.testing"
+import { ALICE, dataFrom, groupDataFrom, GROUP_ID, ME, sentTo } from "../../signal/mirror.testing"
+import { promptTime } from "../../time"
 import { FILE_WORDS } from "../words"
 import { createFileSend, signalFileSend } from "./tool"
 import { createFileSendFixture, type FileSendFixture } from "./tool.testing"
@@ -102,6 +103,113 @@ describe("a reply", () => {
       reply_to: messageId(ALICE, 5000),
     })
     expect(description?.facts.map((fact) => fact.label)).toEqual(["Chat", "Reply to", "Size"])
+    expect(description?.facts[1]).toEqual({
+      label: "Reply to",
+      value: { text: MESSAGE_WORDS.replyText, values: { time: promptTime(5000), text: "hello from Alice" } },
+    })
+  })
+
+  test.each([1, 2])("selects all reply headlines for %i files", async (count) => {
+    t.write("a.txt", "x")
+    t.write("b.txt", "y")
+    t.contacts({ uuid: CAROL, number: ALICE_NUMBER })
+    t.ingest(
+      sentTo(ALICE, 6000, { message: "mine" }),
+      groupDataFrom(CAROL, 6100, { message: "hi" }),
+      dataFrom(CAROL, 6200, { message: "hi" }),
+    )
+    const files = [{ path: "a.txt" }, { path: "b.txt" }].slice(0, count)
+    const file: Record<string, string> = count === 1 ? { file: "a.txt" } : {}
+    const cases = [
+      {
+        chat: GROUP,
+        author: ALICE,
+        ts: 2000,
+        text: count === 1 ? FILE_WORDS.replyOneHeadline : FILE_WORDS.replyHeadline,
+        values: { ...file, author: "Alice", chat: "Team" },
+      },
+      {
+        chat: ALICE,
+        author: ALICE,
+        ts: 5000,
+        text: count === 1 ? FILE_WORDS.replyOneHeadlinePerson : FILE_WORDS.replyHeadlinePerson,
+        values: { ...file, chat: "Alice" },
+      },
+      {
+        chat: ALICE,
+        author: ME,
+        ts: 6000,
+        text: count === 1 ? FILE_WORDS.replyOneHeadlineOwn : FILE_WORDS.replyHeadlineOwn,
+        values: { ...file, chat: "Alice" },
+      },
+      {
+        chat: GROUP,
+        author: CAROL,
+        ts: 6100,
+        text: count === 1 ? FILE_WORDS.replyOneHeadlineUnnamed : FILE_WORDS.replyHeadlineUnnamed,
+        values: { ...file, chat: "Team" },
+      },
+      {
+        chat: ME,
+        author: ME,
+        ts: 4000,
+        text: count === 1 ? FILE_WORDS.replyOneHeadlineNote : FILE_WORDS.replyHeadlineNote,
+        ...(count === 1 && { values: file }),
+      },
+    ]
+    for (const { chat, author, ts, text, values } of cases) {
+      const description = await describeCall({ chat, files, reply_to: messageId(author, ts) })
+      expect(description?.headline).toEqual({ text, ...(values && { values }) })
+      expect(JSON.stringify(description)).not.toContain(ALICE_NUMBER)
+      expect(JSON.stringify(description)).not.toContain(CAROL)
+    }
+    const unnamed = await describeCall({ chat: CAROL, files, reply_to: messageId(CAROL, 6200) })
+    expect(unnamed?.headline).toBeUndefined()
+    expect(JSON.stringify(unnamed)).not.toContain(ALICE_NUMBER)
+  })
+
+  test.each([
+    [
+      { message: "Hi \uFFFC", mentions: [{ uuid: ALICE, start: 3, length: 1 }] },
+      MESSAGE_WORDS.replyText,
+      { text: "Hi @Alice" },
+    ],
+    [{ message: "hidden", viewOnce: true }, MESSAGE_WORDS.replyViewOnce, {}],
+    [
+      {
+        attachments: [
+          { id: "f1", filename: " a.png " },
+          { id: "f2", filename: "b.png" },
+        ],
+      },
+      MESSAGE_WORDS.replyFiles,
+      { files: "a.png, b.png" },
+    ],
+    [{ attachments: [{ id: "f1" }] }, MESSAGE_WORDS.replyFile, { count: 1 }],
+    [
+      {
+        attachments: [
+          { id: "f1", filename: "a.png" },
+          { id: "f2", filename: " " },
+        ],
+      },
+      MESSAGE_WORDS.replyFilesCount,
+      { count: 2 },
+    ],
+    [{ message: " " }, MESSAGE_WORDS.replyNoText, {}],
+  ])("shows the quoted content %j", async (data, text, values) => {
+    t.write("a.txt", "x")
+    t.ingest(dataFrom(ALICE, 6000, data))
+    const description = await describeCall({
+      chat: ALICE,
+      files: [{ path: "a.txt" }],
+      reply_to: messageId(ALICE, 6000),
+    })
+    expect(description?.facts).toContainEqual({
+      label: "Reply to",
+      value: { text, values: { time: promptTime(6000), ...values } },
+    })
+    expect(JSON.stringify(description)).not.toContain("hidden")
   })
 })
 

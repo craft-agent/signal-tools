@@ -9,13 +9,14 @@ export type OwnAction = "edit" | "delete"
 /** The action as the refusal names it. */
 const PASSIVE: Record<OwnAction, string> = { edit: "edited", delete: "deleted for everyone" }
 
-const COLUMNS = "ts, body, attachments, quote, sticker, other, view_once, edited, expires_in"
+const COLUMNS = "ts, body, mentions, attachments, quote, sticker, other, view_once, edited, expires_in"
 
 /** The columns of the user's own message that an action needs to decide and to carry on. */
 export type OwnMessage = {
   /** The message's sent time: the one Signal points at. */
   ts: number
   body: string | null
+  mentions: string | null
   attachments: string | null
   /** The stored quote, as JSON. */
   quote: string | null

@@ -700,12 +700,22 @@ its words have a Japanese table beside it.
 - **The text a person wrote is data.** The message being sent, edited,
   reacted to or deleted is shown as it is, cut to the budget; the kind of
   chat and every unit are the tool's words and are translated.
-- **The text of a disappearing or view-once message never reaches a
-  prompt.** An approval card can be read by others and outlives the message,
-  while its sender meant it to disappear or be seen once. The fact that would
-  hold it says `(disappearing message)` or `(view-once message)` instead. The
-  text the call itself writes (a send's, an edit's new text) is still shown:
-  the user is writing it now.
+- **The message a call acts on is shown, so the person knows which one.** A
+  reply, a reaction, an edit or a deletion whose message cannot be told cannot
+  be judged, so its text is shown as it is, a disappearing message's too: an
+  approval card can outlive the message and be read by others, but a card that
+  hides which message it is about is not worth asking. A view-once message
+  carries media and no text, and its sender meant it to be seen once, so the
+  fact says `(view-once message)`. A mention reads as `@name`, the name as the
+  mirror has it, and `@?` for someone it has no name for, never a number.
+- **A reply says so in its headline.** A send that quotes a message names
+  whom it answers (`About to reply to {author} in {chat}`; the person of a
+  person chat, the user's own message, or a message whose author has no known
+  name, each with its own headline), so it is never read as a plain send. Its
+  `Reply to` fact tells which message: its sent time as `YYYY-MM-DD HH:mm` in
+  local time (`promptTime`), which never moves, then its text; for a message
+  without text, the names of its files, or their count when one has no name,
+  else `(no text)`.
 - **A write to a group also pins its members.** The prompt shows only their
   count, so the pin is a hash of their ids and a swapped member stops the call
   as `stale`.
@@ -717,9 +727,9 @@ The facts the tools add, in the order a prompt shows them:
 | `Chat`     | `Person` or `Group`                                                                                                | every tool but file save     |
 | `Replaces` | the user's reaction there now, which a new one replaces                                                            | react                        |
 | `From`     | who wrote the message, as the mirror names them, or `you`; none for the person of a person chat the headline names | react, file save             |
-| `Message`  | the text of the message acted on, `(no text)`, `(disappearing message)` or `(view-once message)`                   | react, delete                |
-| `Current`  | the text an edit replaces, or `(disappearing message)`                                                             | edit                         |
-| `Reply to` | the text of the message a send quotes, `(no text)`, `(disappearing message)` or `(view-once message)`              | message send, file send      |
+| `Message`  | the text of the message acted on, `(no text)` or `(view-once message)`                                             | react, delete                |
+| `Current`  | the text an edit replaces                                                                                          | edit                         |
+| `Reply to` | the sent time of the message a send quotes, then its text, its files, `(no text)` or `(view-once message)`         | message send, file send      |
 | `Members`  | `{count} members` of a group, the user included                                                                    | every tool but file save     |
 | `Files`    | `{count} files`: a send's of several, a deleted message's, a save's                                                | file send, delete, file save |
 | `Unpack`   | `Archives, after inspection`, when `unpack` is set                                                                 | file save                    |

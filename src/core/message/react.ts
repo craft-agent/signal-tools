@@ -66,7 +66,7 @@ export const signalMessageReact = defineTool({
           ...chatFacts(subject),
           ...(reaction.replaces === null ? [] : [{ label: MESSAGE_WORDS.replaces, value: reaction.replaces }]),
           ...authorFacts(subject, target.author),
-          messageTextFact(MESSAGE_WORDS.message, reaction.message),
+          messageTextFact(subject, MESSAGE_WORDS.message, reaction.message),
           ...membersFacts(subject),
         ],
         pins: subject.pins,
