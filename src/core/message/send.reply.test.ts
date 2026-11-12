@@ -45,13 +45,59 @@ test("quotes in a group, by the member who wrote it", async () => {
   expect(t.sentParams()).toMatchObject({ quoteAuthor: ALICE, quoteMessage: "hello team" })
 })
 
-test("a message without text is quoted without quoteMessage", async () => {
+test("a file-only message quotes the file without quoteMessage", async () => {
   t.ingest(dataFrom(ALICE, 5600, { attachments: [{ id: "f1", contentType: "image/png", filename: "a.png" }] }))
   await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
   const params = t.sentParams()
-  expect(params).toMatchObject({ quoteTimestamp: 5600, quoteAuthor: ALICE })
+  expect(params).toMatchObject({ quoteTimestamp: 5600, quoteAuthor: ALICE, quoteAttachment: ["image/png:a.png"] })
   expect(params).not.toHaveProperty("quoteMessage")
 })
+
+test("a message with text and a file quotes both", async () => {
+  t.ingest(
+    dataFrom(ALICE, 5600, {
+      message: "a picture",
+      attachments: [{ id: "f1", contentType: "image/png", filename: "a.png" }],
+    }),
+  )
+  await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+  expect(t.sentParams()).toMatchObject({ quoteMessage: "a picture", quoteAttachment: ["image/png:a.png"] })
+})
+
+test("only the first of two files is quoted", async () => {
+  t.ingest(
+    dataFrom(ALICE, 5600, {
+      attachments: [
+        { id: "f1", contentType: "image/png", filename: "a.png" },
+        { id: "f2", contentType: "image/jpeg", filename: "b.jpg" },
+      ],
+    }),
+  )
+  await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+  expect(t.sentParams()).toMatchObject({ quoteAttachment: ["image/png:a.png"] })
+})
+
+test.each([undefined, "", "a:b.png"])("a file with filename %j quotes only its type", async (filename) => {
+  t.ingest(dataFrom(ALICE, 5600, { attachments: [{ id: "f1", contentType: "image/png", filename }] }))
+  await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+  expect(t.sentParams()).toMatchObject({ quoteAttachment: ["image/png"] })
+})
+
+test.each([undefined, "", "image/png:preview"])(
+  "a first file with content type %j sends no quoteAttachment",
+  async (contentType) => {
+    t.ingest(
+      dataFrom(ALICE, 5600, {
+        attachments: [
+          { id: "f1", contentType, filename: "a.png" },
+          { id: "f2", contentType: "image/jpeg", filename: "b.jpg" },
+        ],
+      }),
+    )
+    await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+    expect(t.sentParams()).not.toHaveProperty("quoteAttachment")
+  },
+)
 
 test("a mention in the quoted text is passed along as a quote mention", async () => {
   t.ingest(

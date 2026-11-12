@@ -4,7 +4,7 @@ import { basename } from "node:path"
 import { GROUP } from "../../chat/read.testing"
 import { accepted, SENT } from "../../message/send.testing"
 import { messageId } from "../../signal/ids"
-import { ALICE, GROUP_ID, ME } from "../../signal/mirror.testing"
+import { ALICE, dataFrom, GROUP_ID, ME } from "../../signal/mirror.testing"
 import { formatLocalTime } from "../../time"
 import { createFileSendFixture, type FileSendFixture } from "./tool.testing"
 
@@ -107,6 +107,22 @@ describe("what signal-cli is given", () => {
       quoteAuthor: ALICE,
       quoteMessage: "hello from Alice",
     })
+  })
+
+  test("a reply to a file-only message quotes its first file", async () => {
+    t.ingest(dataFrom(ALICE, 5600, { attachments: [{ id: "f1", contentType: "image/png", filename: "a.png" }] }))
+    await t.serve(accepted(ALICE))
+    await t.sendFiles({
+      chat: ALICE,
+      files: [{ path: t.write("a.txt") }],
+      reply_to: messageId(ALICE, 5600),
+    })
+    expect(t.sentParams()).toMatchObject({
+      quoteTimestamp: 5600,
+      quoteAuthor: ALICE,
+      quoteAttachment: ["image/png:a.png"],
+    })
+    expect(t.sentParams()).not.toHaveProperty("quoteMessage")
   })
 
   test("the upload is given five minutes, not a minute", async () => {
