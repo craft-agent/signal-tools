@@ -84,6 +84,17 @@ describe("a send that Signal accepted", () => {
     expect(stored(SENT)).toEqual(stored(SENT + 1))
   })
 
+  test("a reply to a file-only message keeps its quoted file with the sent files", async () => {
+    t.ingest(dataFrom(ALICE, 5100, { attachments: [{ contentType: "image/png", filename: "a.png" }] }))
+    await t.sendFiles({ chat: ALICE, files: [{ path: t.write("a.txt") }], reply_to: messageId(ALICE, 5100) })
+    expect(JSON.parse(String(stored(SENT).quote))).toEqual({
+      id: 5100,
+      author: ALICE,
+      text: null,
+      attachments: [{ type: "image/png", name: "a.png" }],
+    })
+  })
+
   test("takes the timer from the chat's latest ordinary message, started at the sent time", async () => {
     t.ingest(dataFrom(ALICE, 5200, { message: "earlier", expiresInSeconds: 3600 }))
     await t.sendFiles({ chat: ALICE, files: [{ path: t.write("a.txt") }] })

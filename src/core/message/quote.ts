@@ -60,6 +60,7 @@ export function quoteOfStored(stored: StoredQuote | null): Quote | null {
     author: stored.author,
     text: stored.text,
     mentions: namedMentions(stored.mentions ?? []),
+    attachment: quotedAttachment(stored.attachments ?? []),
   }
 }
 

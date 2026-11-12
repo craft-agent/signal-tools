@@ -104,6 +104,26 @@ describe("the quote of the message", () => {
     expect(t.requestParams("send")).toMatchObject({ quoteMessage: "\uFFFC said", quoteMention: [`0:1:${BOB}`] })
   })
 
+  test("of a file-only message is sent again with its first file", async () => {
+    t.ownMessage(OWN + 1, {
+      message: "got it",
+      quote: {
+        id: 5000,
+        authorUuid: ALICE,
+        attachments: [{ contentType: "image/png", filename: "a.png" }, { contentType: "video/mp4" }],
+      },
+    })
+    await t.edit({ chat: ALICE, id: messageId(ME, OWN + 1), text: "got it, thanks" })
+    expect(t.requestParams("send")).toEqual({
+      recipient: [ALICE],
+      editTimestamp: OWN + 1,
+      message: "got it, thanks",
+      quoteTimestamp: 5000,
+      quoteAuthor: ALICE,
+      quoteAttachment: ["image/png:a.png"],
+    })
+  })
+
   test("that names no author cannot be sent again, so the edit is refused before anything is sent", async () => {
     t.ownMessage(OWN + 1, { message: "got it", quote: { id: 5000, text: "hello from Alice" } })
     const error = await t.editFailure({ chat: ALICE, id: messageId(ME, OWN + 1), text: "got it, thanks" })
