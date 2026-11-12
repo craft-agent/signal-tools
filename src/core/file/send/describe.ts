@@ -31,9 +31,10 @@ async function describeFiles(
 ): Promise<CallDescription> {
   const caption = checkedCaption(args.text)
   const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
-  const { prepared, subject } = await withMirror(ctx, args.account, (mirror, me) => {
+  const { subject, replyFacts } = await withMirror(ctx, args.account, (mirror, me) => {
     const prepared = prepareSend(mirror, me, { chat: args.chat, replyTo }, Date.now())
-    return { prepared, subject: chatSubject(mirror, prepared) }
+    const subject = chatSubject(mirror, prepared)
+    return { subject, replyFacts: replyToFacts(subject, prepared.quote) }
   })
   const files = await resolveFiles(args.files, ctx)
   const budget: ByteBudget = { used: 0, limit: maxTotalBytes }
@@ -53,7 +54,7 @@ async function describeFiles(
     ...(headline && { headline }),
     facts: [
       ...chatFacts(subject),
-      ...replyToFacts(prepared.quote),
+      ...replyFacts,
       ...membersFacts(subject),
       ...(files.length > 1 ? filesFacts(files.length) : []),
       sizeFact(digests.reduce((total, { size }) => total + size, 0)),

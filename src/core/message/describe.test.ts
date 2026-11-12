@@ -153,27 +153,33 @@ describe("authorFacts", () => {
 })
 
 describe("messageTextFact", () => {
-  const message = { body: "secret", view_once: 0, expires_in: 0 }
+  const message = { body: "secret", view_once: 0, mentions: [] }
 
-  test("holds the text of an ordinary message", () => {
-    expect(messageTextFact("Message", message)).toEqual({ label: "Message", value: "secret" })
-    expect(messageTextFact("Message", { ...message, body: null })).toEqual({
+  function factOf(value: Parameters<typeof messageTextFact>[2]) {
+    return withMirror(fixture, undefined, (mirror, me) =>
+      messageTextFact(chatSubject(mirror, prepareChat(mirror, me, ME, "send")), "Message", value),
+    )
+  }
+
+  test("holds the text of an ordinary message", async () => {
+    expect(await factOf(message)).toEqual({ label: "Message", value: "secret" })
+    expect(await factOf({ ...message, body: null })).toEqual({
       label: "Message",
       value: { text: MESSAGE_WORDS.noText },
     })
   })
 
-  test("never holds the text of a view-once message", () => {
-    expect(messageTextFact("Message", { ...message, view_once: 1 })).toEqual({
+  test("never holds the text of a view-once message", async () => {
+    expect(await factOf({ ...message, view_once: 1 })).toEqual({
       label: "Message",
       value: { text: MESSAGE_WORDS.viewOnce },
     })
   })
 
-  test("never holds the text of a disappearing message", () => {
-    expect(messageTextFact("Message", { ...message, expires_in: 60 })).toEqual({
+  test("loads and names a mention from the mirror", async () => {
+    expect(await factOf({ ...message, body: "Hi \uFFFC", mentions: [{ start: 3, uuid: ALICE }] })).toEqual({
       label: "Message",
-      value: { text: MESSAGE_WORDS.disappearing },
+      value: "Hi @Alice",
     })
   })
 })

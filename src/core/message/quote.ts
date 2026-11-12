@@ -18,8 +18,6 @@ export type Quote = {
   mentions: StoredMention[]
   /** Whether the quoted message is view-once (1) or not (0); only the description of the call reads it, `quoteParams` ignores it. */
   viewOnce?: number
-  /** The quoted message's disappearing timer in seconds, 0 for none; only the description of the call reads it, `quoteParams` ignores it. */
-  expiresIn?: number
 }
 
 /** The mentions that name someone, as a quote carries them. */
@@ -73,6 +71,5 @@ export function findQuote(mirror: Mirror, chat: string, reference: { author: str
     text: row.body,
     mentions: namedMentions(readList<StoredMention>(row.mentions)),
     viewOnce: row.view_once,
-    expiresIn: row.expires_in,
   }
 }

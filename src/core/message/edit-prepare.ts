@@ -1,7 +1,7 @@
-import { readJson } from "../chat/message-rows"
+import { readJson, readList } from "../chat/message-rows"
 import { ToolError } from "../errors"
 import type { Mirror } from "../signal/mirror"
-import type { StoredQuote } from "../signal/mirror-parts"
+import type { StoredMention, StoredQuote } from "../signal/mirror-parts"
 import { MAX_EDITS } from "./constants"
 import { findOwnMessage, type OwnMessage } from "./own"
 import type { PreparedChat } from "./prepare"
@@ -13,8 +13,8 @@ export type PreparedEdit = {
   timestamp: number
   /** The message's current text (the latest edit). */
   body: string
-  /** The message's disappearing timer in seconds, 0 for none; only the description reads it. */
-  expiresIn: number
+  /** The current text's mentions, for the description of the call. */
+  mentions: StoredMention[]
   /** The message's quote, to send again with the edit; null for a message that quotes nothing. */
   quote: Quote | null
   /** How many more edits Signal allows once this one is made. */
@@ -73,7 +73,7 @@ export function prepareEdit(
   return {
     timestamp: message.ts,
     body: message.body,
-    expiresIn: message.expires_in,
+    mentions: readList<StoredMention>(message.mentions),
     quote,
     editsLeft: MAX_EDITS - made - 1,
   }

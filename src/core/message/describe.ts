@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto"
 import { readList } from "../chat/message-rows"
+import { promptMentions } from "../chat/mentions"
 import { People } from "../chat/people"
 import type { Mirror } from "../signal/mirror"
+import type { StoredMention } from "../signal/mirror-parts"
 import type { CallFact, CallHeadline } from "../tool"
 import type { PreparedChat } from "./prepare"
 import type { Quote } from "./quote"
@@ -100,27 +102,29 @@ export function writtenFact(label: string, text: string | null): CallFact {
 
 /**
  * A fact holding the text of a message that already exists. An approval card
- * can be read by others and outlives the message, so the text of a message its
- * sender meant to disappear or be seen once is never copied: the value is a
- * value template saying so. Any other message is shown by `writtenFact`.
+ * shows its text so the person knows which message, a disappearing message's
+ * too. A view-once message has no text and was meant to be seen once, so its
+ * value is a template saying so. Mentions use known names, never numbers.
  */
 export function messageTextFact(
+  subject: ChatSubject,
   label: string,
-  message: { body: string | null; view_once: number; expires_in: number },
+  message: { body: string | null; view_once: number; mentions: readonly StoredMention[] },
 ): CallFact {
   if (message.view_once) return { label, value: { text: MESSAGE_WORDS.viewOnce } }
-  if (message.expires_in > 0) return { label, value: { text: MESSAGE_WORDS.disappearing } }
-  return writtenFact(label, message.body)
+  const { people } = subject
+  people.load(message.mentions.flatMap(({ uuid }) => (uuid === undefined ? [] : [uuid])))
+  return writtenFact(label, message.body === null ? null : promptMentions(message.body, message.mentions, people))
 }
 
 /** The `Reply to` fact: the quoted message's text as `messageTextFact` shows it; none when the call quotes nothing. */
-export function replyToFacts(quote: Quote | null): CallFact[] {
+export function replyToFacts(subject: ChatSubject, quote: Quote | null): CallFact[] {
   if (!quote) return []
   return [
-    messageTextFact(MESSAGE_WORDS.replyTo, {
+    messageTextFact(subject, MESSAGE_WORDS.replyTo, {
       body: quote.text,
       view_once: quote.viewOnce ?? 0,
-      expires_in: quote.expiresIn ?? 0,
+      mentions: quote.mentions,
     }),
   ]
 }

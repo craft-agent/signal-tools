@@ -45,8 +45,12 @@ export const signalMessageEdit = defineTool({
         headline: chatHeadline(subject, MESSAGE_WORDS.editHeadline, MESSAGE_WORDS.editHeadlineNote),
         facts: [
           ...chatFacts(subject),
-          // An edit is refused for a view-once message, so only the timer can hide the current text
-          messageTextFact(MESSAGE_WORDS.editCurrent, { body: edit.body, view_once: 0, expires_in: edit.expiresIn }),
+          messageTextFact(subject, MESSAGE_WORDS.editCurrent, {
+            body: edit.body,
+            // An edit is refused for a view-once message
+            view_once: 0,
+            mentions: edit.mentions,
+          }),
           ...membersFacts(subject),
         ],
         text: { label: MESSAGE_WORDS.editText, body: text },

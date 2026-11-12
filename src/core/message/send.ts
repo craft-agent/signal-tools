@@ -39,7 +39,7 @@ export const signalMessageSend = defineTool({
       const subject = chatSubject(mirror, prepared)
       return {
         headline: chatHeadline(subject, MESSAGE_WORDS.sendHeadline, MESSAGE_WORDS.sendHeadlineNote),
-        facts: [...chatFacts(subject), ...replyToFacts(prepared.quote), ...membersFacts(subject)],
+        facts: [...chatFacts(subject), ...replyToFacts(subject, prepared.quote), ...membersFacts(subject)],
         text: { label: MESSAGE_WORDS.sendText, body: text },
         pins: subject.pins,
       }

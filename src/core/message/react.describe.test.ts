@@ -38,14 +38,14 @@ describe("a reaction to another person's message", () => {
     })
   })
 
-  test("hides the text of a view-once and of a disappearing message", async () => {
+  test("hides a view-once message but shows a disappearing message's text", async () => {
     t.ingest(dataFrom(ALICE, 5200, { message: "look", viewOnce: true }))
     t.ingest(dataFrom(ALICE, 5300, { message: "fleeting", expiresInSeconds: 3600 }))
     const viewOnce = await describeCall({ chat: ALICE, id: messageId(ALICE, 5200), emoji: "👍" })
     const disappearing = await describeCall({ chat: ALICE, id: messageId(ALICE, 5300), emoji: "👍" })
     expect(viewOnce?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.viewOnce } })
-    expect(disappearing?.facts).toContainEqual({ label: "Message", value: { text: MESSAGE_WORDS.disappearing } })
-    expect(JSON.stringify([viewOnce, disappearing])).not.toMatch(/look|fleeting/)
+    expect(disappearing?.facts).toContainEqual({ label: "Message", value: "fleeting" })
+    expect(JSON.stringify(viewOnce)).not.toContain("look")
   })
 
   test("in a chat known only by a number still names the emoji, and shows no number", async () => {

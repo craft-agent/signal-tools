@@ -74,14 +74,20 @@ describe("a reply", () => {
     expect(description?.facts[1]).toEqual({ label: "Reply to", value: "hello team" })
   })
 
-  test("hides the text of a quoted view-once and of a quoted disappearing message", async () => {
+  test("hides a quoted view-once message but shows a disappearing message's text", async () => {
     t.ingest(dataFrom(ALICE, 5700, { message: "look", viewOnce: true }))
     t.ingest(dataFrom(ALICE, 5800, { message: "fleeting", expiresInSeconds: 3600 }))
     const viewOnce = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5700) })
     const disappearing = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5800) })
     expect(viewOnce?.facts).toContainEqual({ label: "Reply to", value: { text: MESSAGE_WORDS.viewOnce } })
-    expect(disappearing?.facts).toContainEqual({ label: "Reply to", value: { text: MESSAGE_WORDS.disappearing } })
-    expect(JSON.stringify([viewOnce, disappearing])).not.toMatch(/look|fleeting/)
+    expect(disappearing?.facts).toContainEqual({ label: "Reply to", value: "fleeting" })
+    expect(JSON.stringify(viewOnce)).not.toContain("look")
+  })
+
+  test("shows mentions in the quoted text as names", async () => {
+    t.ingest(dataFrom(ALICE, 5900, { message: "Hi \uFFFC", mentions: [{ uuid: ALICE, start: 3, length: 1 }] }))
+    const description = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5900) })
+    expect(description?.facts).toContainEqual({ label: "Reply to", value: "Hi @Alice" })
   })
 
   test("shows `(no text)` for a quoted message without text", async () => {
