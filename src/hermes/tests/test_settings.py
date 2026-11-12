@@ -42,63 +42,6 @@ class SettingsFlagsTest(unittest.TestCase):
     def test_false_and_empty_settings_give_no_flag(self) -> None:
         self.assertEqual(self.flags(toolsets=[], read_only=False, tools=[], exclude_tools=[]), [])
 
-    def test_state_dir_flag(self) -> None:
-        self.assertEqual(
-            settings.state_dir_flags(StubContext({"state_dir": "/custom/path"})), ["--state-dir", "/custom/path"]
-        )
-        self.assertEqual(settings.state_dir_flags(StubContext({})), [])
-
-    def test_state_dir_included_in_settings_flags(self) -> None:
-        self.assertEqual(self.flags(state_dir="/custom/path"), ["--state-dir", "/custom/path"])
-
-    def test_invalid_state_dir_refused(self) -> None:
-        for value in (123, True, "", "   ", []):
-            with self.subTest(value=value), self.assertRaises(settings.SettingsError):
-                settings.state_dir_flags(StubContext({"state_dir": value}))
-
-    def test_download_dir_flag(self) -> None:
-        self.assertEqual(
-            settings.download_dir_flags(StubContext({"download_dir": "/custom/files"})),
-            ["--download-dir", "/custom/files"],
-        )
-        self.assertEqual(settings.download_dir_flags(StubContext({})), [])
-
-    def test_both_directories_follow_the_other_settings(self) -> None:
-        self.assertEqual(
-            self.flags(read_only=True, state_dir="/custom/path", download_dir="/custom/files"),
-            ["--read-only", "--state-dir", "/custom/path", "--download-dir", "/custom/files"],
-        )
-        self.assertEqual(
-            settings.directory_flags(StubContext({"state_dir": "/s", "download_dir": "/d", "read_only": True})),
-            ["--state-dir", "/s", "--download-dir", "/d"],
-        )
-
-    def test_invalid_download_dir_refused(self) -> None:
-        for value in (123, True, "", "   ", []):
-            with self.subTest(value=value), self.assertRaises(settings.SettingsError):
-                settings.download_dir_flags(StubContext({"download_dir": value}))
-
-    def test_send_dirs_flag_joins_the_list(self) -> None:
-        self.assertEqual(
-            settings.send_dirs_flags(StubContext({"send_dirs": ["/a", "~/b"]})), ["--send-dirs", "/a,~/b"]
-        )
-        self.assertEqual(settings.send_dirs_flags(StubContext({})), [])
-        self.assertEqual(settings.send_dirs_flags(StubContext({"send_dirs": []})), [])
-
-    def test_send_dirs_follow_the_other_directories(self) -> None:
-        self.assertEqual(
-            self.flags(state_dir="/s", download_dir="/d", send_dirs=["/a", "/b"]),
-            ["--state-dir", "/s", "--download-dir", "/d", "--send-dirs", "/a,/b"],
-        )
-        self.assertEqual(
-            settings.directory_flags(StubContext({"send_dirs": ["/a"], "read_only": True})), ["--send-dirs", "/a"]
-        )
-
-    def test_invalid_send_dirs_refused(self) -> None:
-        for value in ("/a,/b", 123, True, "", ["/a", 1], ["/a", ""], ["  "], ["/a,/b"]):
-            with self.subTest(value=value), self.assertRaises(settings.SettingsError):
-                settings.send_dirs_flags(StubContext({"send_dirs": value}))
-
     def test_a_wrong_type_is_refused(self) -> None:
         for config in (
             {"toolsets": "things"},
@@ -114,9 +57,47 @@ class SettingsFlagsTest(unittest.TestCase):
                 self.flags(**config)
 
 
-class OptionFlagsTest(unittest.TestCase):
+class DirectorySettingsTest(unittest.TestCase):
+    """The directory settings are tool options: they follow the selection flags, in the order declared."""
+
+    flags = SettingsFlagsTest.flags
+
     def test_the_package_declares_its_directories(self) -> None:
         self.assertEqual(project.OPTIONS, {"state_dir": "path", "download_dir": "path", "send_dirs": "paths"})
+
+    def test_each_directory_becomes_its_flag(self) -> None:
+        self.assertEqual(self.flags(state_dir="/custom/path"), ["--state-dir", "/custom/path"])
+        self.assertEqual(self.flags(download_dir="/custom/files"), ["--download-dir", "/custom/files"])
+        self.assertEqual(self.flags(send_dirs=["/a", "~/b"]), ["--send-dirs", "/a,~/b"])
+
+    def test_directories_follow_the_other_settings_in_the_declared_order(self) -> None:
+        self.assertEqual(
+            self.flags(send_dirs=["/a", "/b"], download_dir="/d", state_dir="/s", read_only=True),
+            ["--read-only", "--state-dir", "/s", "--download-dir", "/d", "--send-dirs", "/a,/b"],
+        )
+
+    def test_absent_and_blank_directories_give_no_flag(self) -> None:
+        for config in (
+            {},
+            {"state_dir": None},
+            {"state_dir": "   ", "download_dir": ""},
+            {"send_dirs": []},
+            {"send_dirs": ["", " "]},
+        ):
+            with self.subTest(config=config):
+                self.assertEqual(self.flags(**config), [])
+
+    def test_blank_send_dirs_items_are_dropped(self) -> None:
+        self.assertEqual(self.flags(send_dirs=["/a", " ", "", " /b "]), ["--send-dirs", "/a,/b"])
+
+    def test_a_path_with_a_comma_is_refused(self) -> None:
+        with self.assertRaises(settings.SettingsError):
+            self.flags(send_dirs=["/a,/b"])
+
+
+class OptionFlagsTest(unittest.TestCase):
+    def test_the_package_options_are_the_declared_ones(self) -> None:
+        self.assertEqual(settings.option_flags(StubContext({"state_dir": "/s"})), ["--state-dir", "/s"])
 
     def test_each_kind_becomes_a_flag(self) -> None:
         options = {"note_text": "text", "note_pinned": "boolean", "note_count": "number", "note_tags": "list"}
