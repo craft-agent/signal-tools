@@ -1,6 +1,6 @@
 import { readList } from "../chat/message-rows"
 import type { Mirror } from "../signal/mirror"
-import type { StoredMention, StoredQuote } from "../signal/mirror-parts"
+import type { StoredAttachment, StoredMention, StoredQuote } from "../signal/mirror-parts"
 import { findLiveRow } from "./lookup"
 
 /** A mention sits at one placeholder character of the quoted text. */
@@ -18,6 +18,10 @@ export type Quote = {
   mentions: StoredMention[]
   /** Whether the quoted message is view-once (1) or not (0); only the description of the call reads it, `quoteParams` ignores it. */
   viewOnce?: number
+  /** The quoted files' trimmed sent names, null when unknown; only the description reads them, `quoteParams` ignores them. */
+  files?: (string | null)[]
+  /** Every mention of that text, those that name nobody included; only the description reads them, `quoteParams` ignores them. */
+  textMentions?: StoredMention[]
 }
 
 /** The mentions that name someone, as a quote carries them. */
@@ -58,18 +62,20 @@ export function quoteParams(quote: Quote): Record<string, unknown> {
  * alike; so is one deleted for everyone or expired, saying it is gone.
  */
 export function findQuote(mirror: Mirror, chat: string, reference: { author: string; ts: number }, now: number): Quote {
-  const row = findLiveRow<{ body: string | null; mentions: string | null; view_once: number }>(
-    mirror,
-    chat,
-    reference,
-    "body, mentions, view_once",
-    now,
-  )
+  const row = findLiveRow<{
+    body: string | null
+    mentions: string | null
+    view_once: number
+    attachments: string | null
+  }>(mirror, chat, reference, "body, mentions, view_once, attachments", now)
+  const textMentions = readList<StoredMention>(row.mentions)
   return {
     timestamp: reference.ts,
     author: reference.author,
     text: row.body,
-    mentions: namedMentions(readList<StoredMention>(row.mentions)),
+    mentions: namedMentions(textMentions),
     viewOnce: row.view_once,
+    files: readList<StoredAttachment>(row.attachments).map(({ name }) => name?.trim() || null),
+    textMentions,
   }
 }

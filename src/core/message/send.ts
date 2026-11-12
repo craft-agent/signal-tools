@@ -2,7 +2,15 @@ import { withMirror } from "../chat/open"
 import { defineTool, StepErrors } from "../tool"
 import { checkedText, messageReference } from "./arguments"
 import { MAX_TEXT_CHARACTERS, MESSAGE_SEND_TOOL_ID } from "./constants"
-import { chatFacts, chatHeadline, chatSubject, membersFacts, replyToFacts } from "./describe"
+import {
+  chatFacts,
+  chatHeadline,
+  chatSubject,
+  membersFacts,
+  replyHeadline,
+  replyToFacts,
+  type ReplyHeadlines,
+} from "./describe"
 import { prepareSend } from "./prepare"
 import { recordSent } from "./record"
 import { sendResult } from "./result"
@@ -10,6 +18,15 @@ import { input, output, type SendOutput } from "./schema"
 import { labelTargets } from "./targets"
 import { transmit } from "./transmit"
 import { MESSAGE_WORDS } from "./words"
+
+/** The headlines of a send that replies to a message. */
+const REPLY_HEADLINES: ReplyHeadlines = {
+  author: MESSAGE_WORDS.replyHeadline,
+  person: MESSAGE_WORDS.replyHeadlinePerson,
+  own: MESSAGE_WORDS.replyHeadlineOwn,
+  unnamed: MESSAGE_WORDS.replyHeadlineUnnamed,
+  noteToSelf: MESSAGE_WORDS.replyHeadlineNote,
+}
 
 /** The `signal_message_send` tool definition. */
 export const signalMessageSend = defineTool({
@@ -38,7 +55,9 @@ export const signalMessageSend = defineTool({
       const prepared = prepareSend(mirror, me, { chat: args.chat, replyTo }, Date.now())
       const subject = chatSubject(mirror, prepared)
       return {
-        headline: chatHeadline(subject, MESSAGE_WORDS.sendHeadline, MESSAGE_WORDS.sendHeadlineNote),
+        headline: prepared.quote
+          ? replyHeadline(subject, prepared.quote, REPLY_HEADLINES)
+          : chatHeadline(subject, MESSAGE_WORDS.sendHeadline, MESSAGE_WORDS.sendHeadlineNote),
         facts: [...chatFacts(subject), ...replyToFacts(subject, prepared.quote), ...membersFacts(subject)],
         text: { label: MESSAGE_WORDS.sendText, body: text },
         pins: subject.pins,
