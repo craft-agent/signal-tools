@@ -15,6 +15,7 @@
       "command": "node",
       "args": ["dist/mcp.js"],
       "cwd": ".",
+      "default_tools_approval_mode": "writes",
       "env_vars": [
         "SIGNAL_TOOLS_TOOLSETS",
         "SIGNAL_TOOLS_READ_ONLY",
