@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { parseDirectorySettings, parseSettings, parseToolSettings } from "./settings"
+import { parseSettings, parseToolSettings } from "./settings"
 import { failure, profile } from "./settings.testing"
 
 const parse = (argv: string[], env: Record<string, string | undefined> = {}) => parseSettings(argv, env, profile)
@@ -31,10 +31,13 @@ describe("the send_dirs setting", () => {
     expect(failure(() => parse(["--send-dirs"])).message).toContain("--send-dirs")
   })
 
-  test("the tool and directory parsers read it too", () => {
+  test("the tool settings parser reads it too", () => {
     expect(parseToolSettings(["--send-dirs=/a"], {}, profile).send_dirs).toEqual(["/a"])
-    expect(parseDirectorySettings(["--send-dirs=/a,/b"], {}, profile).send_dirs).toEqual(["/a", "/b"])
-    expect(parseDirectorySettings([], { DEMO_SEND_DIRS: "/a" }, profile).send_dirs).toEqual(["/a"])
-    expect(failure(() => parseDirectorySettings(["--send-dirs=rel"], {}, profile)).message).toContain("--send-dirs")
+    expect(parseToolSettings([], { DEMO_SEND_DIRS: "/a,/b" }, profile).send_dirs).toEqual(["/a", "/b"])
+  })
+
+  test("a blank value counts as unset in a flag as in a variable", () => {
+    expect(parse(["--send-dirs= , "], { DEMO_SEND_DIRS: "/env" }).send_dirs).toEqual([])
+    expect(parse(["--send-dirs="], { DEMO_SEND_DIRS: "/env" }).send_dirs).toEqual([])
   })
 })

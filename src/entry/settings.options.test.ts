@@ -31,7 +31,11 @@ describe("settingsFromOptions", () => {
       state_dir: "/custom/state",
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/send", "/custom/more"],
-      options: {},
+      options: {
+        state_dir: "/custom/state",
+        download_dir: "/custom/downloads",
+        send_dirs: ["/custom/send", "/custom/more"],
+      },
     })
     expect(fromOptions({ toolsets: "all" }).toolsets).toBe("all")
     expect(fromOptions({ toolsets: ["alpha", "all"] }).toolsets).toBe("all")
@@ -54,7 +58,7 @@ describe("settingsFromOptions", () => {
       state_dir: "/env/state",
       download_dir: "/env/downloads",
       send_dirs: ["/env/a", "/env/b"],
-      options: {},
+      options: { state_dir: "/env/state", download_dir: "/env/downloads", send_dirs: ["/env/a", "/env/b"] },
     })
     expect(
       fromOptions(
@@ -74,7 +78,7 @@ describe("settingsFromOptions", () => {
       state_dir: "/opt/state",
       download_dir: "/opt/downloads",
       send_dirs: ["/opt/send"],
-      options: {},
+      options: { state_dir: "/opt/state", download_dir: "/opt/downloads", send_dirs: ["/opt/send"] },
     })
   })
 
@@ -98,6 +102,15 @@ describe("settingsFromOptions", () => {
     expect(fromOptions({ send_dirs: ["~/shared"] }, { HOME: "/home/user" }).send_dirs).toEqual(["/home/user/shared"])
     expect(fromOptions({ send_dirs: [] }, { DEMO_SEND_DIRS: "/env/a" }).send_dirs).toEqual([])
     expect(failure(() => fromOptions({}, { DEMO_SEND_DIRS: "/a,rel" })).message).toContain("DEMO_SEND_DIRS")
+  })
+
+  test("a blank directory or a blank entry counts as unset", () => {
+    const home = { HOME: "/home/user" }
+    expect(fromOptions({ state_dir: " ", download_dir: "" }, home)).toMatchObject({
+      state_dir: "/home/user/.local/state/demo-tools",
+      download_dir: "/home/user/Downloads/demo-tools",
+    })
+    expect(fromOptions({ send_dirs: ["/a", " ", ""] }).send_dirs).toEqual(["/a"])
   })
 
   test("an unknown toolset or option is rejected, naming it", () => {

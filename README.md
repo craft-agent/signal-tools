@@ -265,6 +265,26 @@ Hermes.
 
 [`docs/conventions.md`](docs/conventions.md) has the rules each step follows.
 
+A package declares each option as `text`, `boolean`, `number`, `list`, `path`
+or `paths`, or as an object with `type` and optional bounds. For example, in
+`src/project.ts`:
+
+```ts
+options: {
+  notes_dir: "path",
+  note_limit: { type: "number", integer: true, min: 1, max: 50 },
+}
+```
+
+`integer: true` requires a whole number; `min` and `max` bound a number or
+count a `list` or `paths` value's items. An object with only `type` means the
+same as the type alone. Hermes's `OPTIONS` mirrors the declarations on one
+line, with double quotes and Python's `True` for `integer`:
+
+```python
+OPTIONS: dict[str, str | dict[str, object]] = {"notes_dir": "path", "note_limit": {"type": "number", "integer": True, "min": 1, "max": 50}}
+```
+
 ## Reads and writes
 
 Every read tool is named `<prefix>_<domain>_read`. Reads can run unasked;
@@ -310,13 +330,23 @@ variable, and an option or setting wins over the variable too.
 | `confirm`       | `--confirm`       | `SIGNAL_TOOLS_CONFIRM`       | MCP server only: `harness` (default) or `elicitation`, as the conventions say     |
 | `language`      | `--language`      | `SIGNAL_TOOLS_LANGUAGE`      | native plugins only: the approval prompt's language, such as `ja`                 |
 | `emoji`         | —                 | —                            | Hermes only: the emoji shown beside each toolset, by toolset name (`""` for none) |
-| `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | where every label's state lives; default `$XDG_STATE_HOME/signal-tools`           |
-| `download_dir`  | `--download-dir`  | `SIGNAL_TOOLS_DOWNLOAD_DIR`  | where received files are saved; default `~/Downloads/signal-tools`                |
-| `send_dirs`     | `--send-dirs`     | `SIGNAL_TOOLS_SEND_DIRS`     | the directories files may be sent from, besides the working directory             |
+| `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | `path`: where every label's state lives; default `$XDG_STATE_HOME/signal-tools`   |
+| `download_dir`  | `--download-dir`  | `SIGNAL_TOOLS_DOWNLOAD_DIR`  | `path`: where received files are saved; default `~/Downloads/signal-tools`        |
+| `send_dirs`     | `--send-dirs`     | `SIGNAL_TOOLS_SEND_DIRS`     | `paths`: the directories files may be sent from, besides the working directory    |
 
-Lists are comma-separated in a flag or a variable. A package's own settings,
-listed in `options` in `src/project.ts`, take a row each here and are read the
-same way. Where each harness reads them:
+Lists are comma-separated in a flag or a variable. This package's own settings,
+`state_dir`, `download_dir` and `send_dirs`, are listed in `options` in
+`src/project.ts` and read the same way. A `path` is trimmed; `~` and `~/…`
+(also with the platform separator) stand for the home directory (`HOME` when it
+is absolute, else the account's). It must then be absolute and reaches the tool
+normalized, without a filesystem check. `paths` is a list of such paths,
+comma-separated in a flag or variable and an array of strings in a plugin
+option or Hermes setting. A blank path counts as unset, so the default
+applies; blank list items are dropped, and a list with no items left counts as
+unset. Bounds check only a given value, not an unset option. Refused values
+are `invalid_argument`, naming the flag, variable or option and what it must
+be. Hermes passes paths and lists to the command line, which checks the paths
+and bounds. Where each harness reads them:
 
 - **OpenCode** takes the plugin `options` shown above, with lists as arrays,
   `read_only` as a boolean, `state_dir` and `download_dir` as paths and
@@ -335,6 +365,10 @@ same way. Where each harness reads them:
         settings:
           read_only: false
           exclude_tools: []
+          state_dir: ~/.local/state/signal-tools
+          download_dir: ~/Downloads/signal-tools
+          send_dirs:
+            - ~/Documents
   ```
 
   Without a `language` setting, the approval card follows Hermes's own
@@ -377,8 +411,9 @@ which you install yourself. They never read another client's data.
 - **Each label keeps its state in one directory**, `<state_dir>/<label>/`
   (mode 700): signal-cli's data and keys, the daemon's socket, the mirror of
   received messages, and the copies of files being sent. `state_dir` defaults
-  to `$XDG_STATE_HOME/signal-tools`, or `~/.local/state/signal-tools`. Keep it
-  out of backups you share: the keys read and send as you.
+  to `$XDG_STATE_HOME/signal-tools` when `XDG_STATE_HOME` is absolute, else
+  `~/.local/state/signal-tools`. Keep it out of backups you share: the keys
+  read and send as you.
 - **A sync service receives for each label** and keeps its mirror, and the
   read tools read only the mirror. History starts when the device is linked;
   messages that arrive while the service is down wait on Signal's server, for
