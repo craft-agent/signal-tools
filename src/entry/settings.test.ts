@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { PROJECT } from "../project"
 import type { EntryProfile } from "./profile"
 import { forwardedVariables, parseSettings, parseToolSettings, settingVariables } from "./settings"
-import { failure, profile } from "./settings.testing"
+import { DEFAULT_GRANTS, failure, profile } from "./settings.testing"
 
 const parse = (argv: string[], env: Record<string, string | undefined> = {}) => parseSettings(argv, env, profile)
 const parseTool = (argv: string[], env: Record<string, string | undefined> = {}) =>
@@ -16,6 +16,8 @@ describe("settingVariables", () => {
       "DEMO_TOOLS",
       "DEMO_EXCLUDE_TOOLS",
       "DEMO_CONFIRM",
+      "DEMO_UNATTENDED",
+      "DEMO_GRANTS_DIR",
       "DEMO_STATE_DIR",
       "DEMO_DOWNLOAD_DIR",
       "DEMO_SEND_DIRS",
@@ -32,12 +34,20 @@ describe("settingVariables", () => {
 })
 
 describe("forwardedVariables", () => {
-  test("lists the settings' variables, then the tool variables", () => {
-    expect(forwardedVariables(profile, ["XDG_STATE_HOME"])).toEqual([...settingVariables(profile), "XDG_STATE_HOME"])
+  test("lists the settings' variables, the grant key's, then the tool variables", () => {
+    expect(forwardedVariables(profile, ["XDG_STATE_HOME"])).toEqual([
+      ...settingVariables(profile),
+      "DEMO_GRANT_KEY",
+      "XDG_STATE_HOME",
+    ])
   })
 
   test("uses the package's own prefix and toolVariables by default", () => {
-    expect(forwardedVariables()).toEqual([...settingVariables(), ...PROJECT.toolVariables])
+    expect(forwardedVariables()).toEqual([
+      ...settingVariables(),
+      `${PROJECT.envPrefix}_GRANT_KEY`,
+      ...PROJECT.toolVariables,
+    ])
   })
 })
 
@@ -46,6 +56,7 @@ describe("parseSettings", () => {
     expect(parse([])).toEqual({
       confirm: "harness",
       options: {},
+      grants: DEFAULT_GRANTS,
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -81,6 +92,7 @@ describe("parseSettings", () => {
       download_dir: "/custom/downloads",
       send_dirs: ["/custom/send"],
       options: { state_dir: "/custom/state", download_dir: "/custom/downloads", send_dirs: ["/custom/send"] },
+      grants: DEFAULT_GRANTS,
     })
   })
 
@@ -110,6 +122,7 @@ describe("parseSettings", () => {
         download_dir: "/custom/downloads",
         send_dirs: ["/custom/a", "/custom/b"],
       },
+      grants: DEFAULT_GRANTS,
     })
   })
 
@@ -135,6 +148,7 @@ describe("parseSettings", () => {
       download_dir: "/env/downloads",
       send_dirs: ["/env/a", "/env/b"],
       options: { state_dir: "/env/state", download_dir: "/env/downloads", send_dirs: ["/env/a", "/env/b"] },
+      grants: DEFAULT_GRANTS,
     })
   })
 
@@ -208,6 +222,7 @@ describe("parseSettings", () => {
       download_dir: "/flag/downloads",
       send_dirs: ["/flag/send"],
       options: { state_dir: "/flag/state", download_dir: "/flag/downloads", send_dirs: ["/flag/send"] },
+      grants: DEFAULT_GRANTS,
     })
   })
 
@@ -215,6 +230,7 @@ describe("parseSettings", () => {
     expect(parse([], { DEMO_TOOLSETS: "", DEMO_CONFIRM: " ", DEMO_DOWNLOAD_DIR: " ", DEMO_SEND_DIRS: " " })).toEqual({
       confirm: "harness",
       options: {},
+      grants: DEFAULT_GRANTS,
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -296,6 +312,7 @@ describe("parseToolSettings", () => {
   test("reads the tool settings and gives no confirm setting", () => {
     expect(parseTool([])).toEqual({
       options: {},
+      grants: DEFAULT_GRANTS,
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
@@ -314,6 +331,7 @@ describe("parseToolSettings", () => {
       download_dir: "/tool/files",
       send_dirs: [],
       options: { state_dir: "/tool/state", download_dir: "/tool/files" },
+      grants: DEFAULT_GRANTS,
     })
   })
 
@@ -325,6 +343,7 @@ describe("parseToolSettings", () => {
   test("ignores DEMO_CONFIRM, even a bad one", () => {
     expect(parseTool([], { DEMO_CONFIRM: "ask" })).toEqual({
       options: {},
+      grants: DEFAULT_GRANTS,
       state_dir: expect.any(String),
       download_dir: expect.any(String),
       send_dirs: [],
