@@ -83,8 +83,11 @@ test.each([undefined, "", "a:b.png"])("a file with filename %j quotes only its t
   expect(t.sentParams()).toMatchObject({ quoteAttachment: ["image/png"] })
 })
 
+const EMPTY_QUOTE =
+  "That message has no text and no file a reply can quote, and Signal on iPhone does not show a reply whose quote is empty. Send it without reply_to."
+
 test.each([undefined, "", "image/png:preview"])(
-  "a first file with content type %j sends no quoteAttachment",
+  "a text-less message whose first file has content type %j is refused and nothing is sent",
   async (contentType) => {
     t.ingest(
       dataFrom(ALICE, 5600, {
@@ -94,10 +97,36 @@ test.each([undefined, "", "image/png:preview"])(
         ],
       }),
     )
+    const error = await t.sendFailure({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+    expect(error).toMatchObject({ code: "invalid_argument", message: EMPTY_QUOTE })
+    expect(t.daemon().calls).toEqual([])
+  },
+)
+
+test.each([undefined, "", "image/png:preview"])(
+  "a message with text whose first file has content type %j quotes the text and no quoteAttachment",
+  async (contentType) => {
+    t.ingest(
+      dataFrom(ALICE, 5600, {
+        message: "a picture",
+        attachments: [
+          { id: "f1", contentType, filename: "a.png" },
+          { id: "f2", contentType: "image/jpeg", filename: "b.jpg" },
+        ],
+      }),
+    )
     await t.send({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5600) })
+    expect(t.sentParams()).toMatchObject({ quoteMessage: "a picture" })
     expect(t.sentParams()).not.toHaveProperty("quoteAttachment")
   },
 )
+
+test("a sticker-only message is refused and nothing is sent", async () => {
+  t.ingest(dataFrom(ALICE, 5700, { sticker: { packId: "ab", stickerId: 1 } }))
+  const error = await t.sendFailure({ chat: ALICE, text: "nice", reply_to: messageId(ALICE, 5700) })
+  expect(error).toMatchObject({ code: "invalid_argument", message: EMPTY_QUOTE })
+  expect(t.daemon().calls).toEqual([])
+})
 
 test("a mention in the quoted text is passed along as a quote mention", async () => {
   t.ingest(

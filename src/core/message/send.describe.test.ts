@@ -127,10 +127,10 @@ describe("a reply", () => {
 
   test.each([
     [[], MESSAGE_WORDS.replyNoText, {}],
-    [[{ id: "f1" }], MESSAGE_WORDS.replyFile, { count: 1 }],
+    [[{ id: "f1", contentType: "image/png" }], MESSAGE_WORDS.replyFile, { count: 1 }],
     [
       [
-        { id: "f1", filename: "a.png" },
+        { id: "f1", contentType: "image/png", filename: "a.png" },
         { id: "f2", filename: "  " },
       ],
       MESSAGE_WORDS.replyFilesCount,
@@ -138,13 +138,13 @@ describe("a reply", () => {
     ],
     [
       [
-        { id: "f1", filename: " a.png " },
+        { id: "f1", contentType: "image/png", filename: " a.png " },
         { id: "f2", filename: "b.png" },
       ],
       MESSAGE_WORDS.replyFiles,
       { files: "a.png, b.png" },
     ],
-  ])("describes quoted files %j", async (attachments, text, values) => {
+  ])("describes quoted files %j with whitespace-only text", async (attachments, text, values) => {
     t.ingest(dataFrom(ALICE, 5600, { message: "  ", attachments }))
     const description = await describeCall({ chat: ALICE, text: "ok", reply_to: messageId(ALICE, 5600) })
     expect(description?.facts).toContainEqual({
@@ -188,6 +188,11 @@ describe("a reply", () => {
 })
 
 describe("a call that would be refused", () => {
+  test("a sticker-only message has no description", async () => {
+    t.ingest(dataFrom(ALICE, 5700, { sticker: { packId: "ab", stickerId: 1 } }))
+    expect(await describeCall({ chat: ALICE, text: "hi", reply_to: messageId(ALICE, 5700) })).toBeUndefined()
+  })
+
   test.each([
     ["an unknown chat", { chat: "nobody", text: "hi" }],
     ["a group the user left", { chat: OTHER_GROUP, text: "hi" }],

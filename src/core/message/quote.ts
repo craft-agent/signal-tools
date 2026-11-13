@@ -1,6 +1,8 @@
 import { readList } from "../chat/message-rows"
+import { ToolError } from "../errors"
 import type { Mirror } from "../signal/mirror"
 import type { StoredAttachment, StoredMention, StoredQuote } from "../signal/mirror-parts"
+import { EMPTY_QUOTE_SEND_MESSAGE } from "./constants"
 import { findLiveRow } from "./lookup"
 
 /** A mention sits at one placeholder character of the quoted text. */
@@ -35,6 +37,11 @@ export type Quote = {
   files?: (string | null)[]
   /** Every mention of that text, those that name nobody included; only the description reads them, `quoteParams` ignores them. */
   textMentions?: StoredMention[]
+}
+
+/** Whether the quote carries neither text nor a file; Signal's iPhone app does not show a reply with such a quote at all. */
+export function isEmptyQuote(quote: Quote): boolean {
+  return !quote.text && !quote.attachment
 }
 
 /** The mentions that name someone, as a quote carries them. */
@@ -88,6 +95,7 @@ export function quoteParams(quote: Quote): Record<string, unknown> {
  * The message of `chat` that `reference` names, for a reply to quote. A
  * message of another chat, an unknown one and a timer change are `not_found`
  * alike; so is one deleted for everyone or expired, saying it is gone.
+ * `invalid_argument` for one with neither text nor a quotable file.
  */
 export function findQuote(mirror: Mirror, chat: string, reference: { author: string; ts: number }, now: number): Quote {
   const row = findLiveRow<{
@@ -98,7 +106,7 @@ export function findQuote(mirror: Mirror, chat: string, reference: { author: str
   }>(mirror, chat, reference, "body, mentions, view_once, attachments", now)
   const textMentions = readList<StoredMention>(row.mentions)
   const attachments = readList<StoredAttachment>(row.attachments)
-  return {
+  const quote: Quote = {
     timestamp: reference.ts,
     author: reference.author,
     text: row.body,
@@ -108,4 +116,6 @@ export function findQuote(mirror: Mirror, chat: string, reference: { author: str
     files: attachments.map(({ name }) => name?.trim() || null),
     textMentions,
   }
+  if (isEmptyQuote(quote)) throw new ToolError("invalid_argument", EMPTY_QUOTE_SEND_MESSAGE)
+  return quote
 }

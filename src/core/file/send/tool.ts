@@ -83,7 +83,7 @@ export function createFileSend(limits: Partial<FileSendLimits> = {}) {
       "`chat` is a chat id from signal_chat_read or signal_contact_read check, never a name or a number.",
       "Keys, secrets, programs and installers are refused, and so is a file outside the allowed directories; archives (zip, tar, gzipped tar) are checked entry by entry and never unpacked.",
       "Give each file's `sha256` to be sure the file sent is the one the user approved; a different file is refused as stale.",
-      `\`text\` is a caption sent exactly as given, surrounding blank space trimmed, at most ${MAX_TEXT_CHARACTERS} characters; \`reply_to\` quotes a message of that chat by its id.`,
+      `\`text\` is a caption sent exactly as given, surrounding blank space trimmed, at most ${MAX_TEXT_CHARACTERS} characters; \`reply_to\` quotes a message of that chat by its id, never one with neither text nor a file (a sticker, for one).`,
       `A send takes at most ${MAX_FILES} files and 100 MiB together. Each file is copied and checked first, and nothing is sent unless every file passes.`,
       "The result means Signal accepted it, not that it was delivered or read; for a group it says how many members it reached and lists those it did not.",
       "A failure `uncertain` means the files may have gone out: check the chat on the phone, never send them again blindly.",

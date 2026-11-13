@@ -31,3 +31,11 @@ export const UNKNOWN_MESSAGE = "No message with this id in this chat."
 
 /** What a call says of a message that was deleted for everyone or has disappeared. */
 export const GONE_MESSAGE = "That message is gone; it was deleted or has disappeared."
+
+/** What a send says of a reply to a message with no text and no file a reply can quote. */
+export const EMPTY_QUOTE_SEND_MESSAGE =
+  "That message has no text and no file a reply can quote, and Signal on iPhone does not show a reply whose quote is empty. Send it without reply_to."
+
+/** What an edit says of a reply whose stored quote has no text and no file. */
+export const EMPTY_QUOTE_EDIT_MESSAGE =
+  "This reply's quote has no text and no file, and Signal on iPhone does not show a reply whose quote is empty, so it cannot be edited."

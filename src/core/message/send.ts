@@ -36,7 +36,7 @@ export const signalMessageSend = defineTool({
     "Sends one text to a chat: a person, a group or Note to Self (the user's own account id as the chat).",
     "`chat` is a chat id from signal_chat_read or signal_contact_read check, never a name or a number.",
     `\`text\` is sent exactly as given, surrounding blank space trimmed, at most ${MAX_TEXT_CHARACTERS} characters.`,
-    "`reply_to` quotes a message of that chat by its id; one that was deleted or has disappeared cannot be quoted.",
+    "`reply_to` quotes a message of that chat by its id; one that was deleted or has disappeared cannot be quoted, nor one with neither text nor a file (a sticker, for one).",
     "A group the user left is refused. The chat's disappearing timer applies by itself.",
     "The result means Signal accepted it, not that it was delivered or read; for a group it says how many members it reached and lists those it did not.",
     "A failure `uncertain` means the message may have gone out: check the chat on the phone, never send it again blindly.",

@@ -7,7 +7,8 @@ import { ELF_BYTES } from "../../archive/archive.testing"
 import { buildZip } from "../../archive/zip.testing"
 import { accepted } from "../../message/send.testing"
 import { fakeKey } from "../../outgoing/outgoing.testing"
-import { ALICE } from "../../signal/mirror.testing"
+import { messageId } from "../../signal/ids"
+import { ALICE, dataFrom } from "../../signal/mirror.testing"
 import { createFileSend } from "./tool"
 import { canMakeFifo, createFileSendFixture, makeFifo, type FileSendFixture } from "./tool.testing"
 
@@ -34,6 +35,17 @@ async function refused(
   expect(t.outboxEntries()).toEqual([])
   return error
 }
+
+test("a reply to a sticker-only message is refused before anything is sent", async () => {
+  t.ingest(dataFrom(ALICE, 5700, { sticker: { packId: "ab", stickerId: 1 } }))
+  const error = await refused([{ path: t.write("a.txt") }], "invalid_argument", {
+    reply_to: messageId(ALICE, 5700),
+  })
+  expect(error.message).toBe(
+    "That message has no text and no file a reply can quote, and Signal on iPhone does not show a reply whose quote is empty. Send it without reply_to.",
+  )
+  expect(t.daemon().calls).toEqual([])
+})
 
 describe("sha256", () => {
   const sha = (content: string) => createHash("sha256").update(content).digest("hex")

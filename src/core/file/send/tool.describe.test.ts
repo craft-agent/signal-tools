@@ -178,18 +178,18 @@ describe("a reply", () => {
     [
       {
         attachments: [
-          { id: "f1", filename: " a.png " },
+          { id: "f1", contentType: "image/png", filename: " a.png " },
           { id: "f2", filename: "b.png" },
         ],
       },
       MESSAGE_WORDS.replyFiles,
       { files: "a.png, b.png" },
     ],
-    [{ attachments: [{ id: "f1" }] }, MESSAGE_WORDS.replyFile, { count: 1 }],
+    [{ attachments: [{ id: "f1", contentType: "image/png" }] }, MESSAGE_WORDS.replyFile, { count: 1 }],
     [
       {
         attachments: [
-          { id: "f1", filename: "a.png" },
+          { id: "f1", contentType: "image/png", filename: "a.png" },
           { id: "f2", filename: " " },
         ],
       },
@@ -214,6 +214,14 @@ describe("a reply", () => {
 })
 
 describe("a call that would be refused", () => {
+  test("a sticker-only message has no description", async () => {
+    t.write("a.txt", "x")
+    t.ingest(dataFrom(ALICE, 5700, { sticker: { packId: "ab", stickerId: 1 } }))
+    expect(
+      await describeCall({ chat: ALICE, files: [{ path: "a.txt" }], reply_to: messageId(ALICE, 5700) }),
+    ).toBeUndefined()
+  })
+
   test("a file outside the allowed directories has no description", async () => {
     const outside = mkdtempSync(join(tmpdir(), "send-outside-"))
     try {
