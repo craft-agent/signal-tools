@@ -9,6 +9,9 @@ provides_tools:
   - signal_contact_read
   - signal_file_save
   - signal_file_send
+  - signal_grant_create
+  - signal_grant_read
+  - signal_grant_revoke
   - signal_message_delete
   - signal_message_edit
   - signal_message_react
