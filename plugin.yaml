@@ -1,5 +1,5 @@
 name: signal-tools
-version: 0.4.0
+version: 0.4.1
 description: "Signal tools for coding agents: chats, messages, contacts, received files and sends."
 manifest_version: 1
 requires_hermes: ">=0.22"
