@@ -13,6 +13,7 @@ import {
   personIds,
   type StoredChat,
 } from "./chat-rows"
+import { excludedCondition } from "./excluded"
 import { fingerprint } from "./filter"
 import { messageEntries } from "./message"
 import { cutMessage, dropMetadata, messageTextLength } from "./message-cut"
@@ -53,27 +54,30 @@ function byActivity(a: StoredChat, b: StoredChat): number {
 /**
  * Every chat worth listing, newest activity first and by id among equals:
  * those with a message, every group, and the user's own (Note to Self), which
- * stands without a row until its first message.
+ * stands without a row until its first message. Excluded chats are never
+ * fetched, nor is the user's own made up when it is excluded.
  */
-function allChats(mirror: Mirror, me: string | null): StoredChat[] {
+function allChats(mirror: Mirror, me: string | null, excluded: ReadonlySet<string>): StoredChat[] {
+  const left = excludedCondition("id", excluded)
   const chats = mirror
     .prepare(
-      `SELECT ${CHAT_COLUMNS} FROM chats WHERE last_ts IS NOT NULL OR kind = 'group' OR id = ?
+      `SELECT ${CHAT_COLUMNS} FROM chats WHERE (last_ts IS NOT NULL OR kind = 'group' OR id = ?)${left ? ` AND ${left.sql}` : ""}
        ORDER BY COALESCE(last_ts, 0) DESC, id`,
     )
-    .all(me) as StoredChat[]
-  if (me === null || chats.some((chat) => chat.id === me)) return chats
+    .all(me, ...(left?.params ?? [])) as StoredChat[]
+  if (me === null || excluded.has(me) || chats.some((chat) => chat.id === me)) return chats
   return [...chats, ownChat(me)].sort(byActivity)
 }
 
-/** Incoming messages not read yet, by chat. */
-function unreadCounts(mirror: Mirror): Map<string, number> {
+/** Incoming messages not read yet, by chat, leaving the excluded chats out. */
+function unreadCounts(mirror: Mirror, excluded: ReadonlySet<string>): Map<string, number> {
+  const left = excludedCondition("chat", excluded)
   const rows = mirror
     .prepare(
       `SELECT chat, COUNT(*) AS unread FROM messages
-       WHERE from_me = 0 AND kind = 'message' AND read_at IS NULL GROUP BY chat`,
+       WHERE from_me = 0 AND kind = 'message' AND read_at IS NULL${left ? ` AND ${left.sql}` : ""} GROUP BY chat`,
     )
-    .all() as { chat: string; unread: number }[]
+    .all(...(left?.params ?? [])) as { chat: string; unread: number }[]
   return new Map(rows.map((row) => [row.chat, row.unread]))
 }
 
@@ -132,16 +136,17 @@ export function listChats(
   me: string | null,
   args: Pick<ChatReadInput, "query" | "unread" | "last" | "limit" | "cursor">,
   now: number,
+  excluded: ReadonlySet<string>,
 ): ChatReadOutput {
   const limit = clampLimit(args.limit, LIMITS.list, "limit")
   const query = foldCase(args.query ?? "").trim()
   const unreadOnly = args.unread === true
   const after = args.cursor === undefined ? undefined : readCursor(args.cursor, "cursor", listCursor)
-  const filter = fingerprint(query, unreadOnly)
+  const filter = fingerprint(query, unreadOnly, [...excluded].sort())
   if (after && after.filter !== filter) throw notACursor("cursor")
   const people = new People(mirror, me)
-  const unread = unreadCounts(mirror)
-  let chats = allChats(mirror, me)
+  const unread = unreadCounts(mirror, excluded)
+  let chats = allChats(mirror, me, excluded)
   if (after)
     chats = chats.filter((chat) => activity(chat) < after.ts || (activity(chat) === after.ts && chat.id > after.id))
   if (unreadOnly) chats = chats.filter((chat) => (unread.get(chat.id) ?? 0) > 0)
