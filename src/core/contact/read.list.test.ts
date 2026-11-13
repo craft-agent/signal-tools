@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
+import { Buffer } from "node:buffer"
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs"
 import { labelPaths } from "../signal/labels"
 import { openMirrorForWrite, setMeta } from "../signal/mirror"
 import { ACCOUNT_UUID_META } from "../signal/mirror-meta"
 import { ALICE, BOB, ME, NUMBER, NOW, makeTempDir } from "../signal/mirror.testing"
-import { annotations, invoke } from "../tool"
+import { annotations, invoke, type ToolOptionValue } from "../tool"
 import { signalContactRead } from "./read"
 
 let stateDir: string
@@ -43,6 +44,68 @@ function seed(
 function list(args: Record<string, unknown> = {}) {
   return invoke(signalContactRead, { method: "list", ...args }, { cwd: stateDir, stateDir })
 }
+
+const NO_CHAT_ROW = "44444444-4444-4444-8444-444444444444"
+
+function listExcluding(excluded: ToolOptionValue, args: Record<string, unknown> = {}) {
+  return invoke(
+    signalContactRead,
+    { method: "list", ...args },
+    { cwd: stateDir, stateDir, options: { exclude_chats: excluded } },
+  )
+}
+
+test("leaves excluded people out before paging, with or without a chat row", async () => {
+  seed([
+    { uuid: ALICE, name: "Alice" },
+    { uuid: BOB, name: "Bob" },
+    { uuid: NO_CHAT_ROW, name: "Carol" },
+    { uuid: "55555555-5555-4555-8555-555555555555", name: "Dave" },
+  ])
+  const first = await listExcluding([ALICE, NO_CHAT_ROW], { limit: 1 })
+  expect(first.contacts?.map((row) => row.chat)).toEqual([BOB])
+  const decoded = Buffer.from(first.next!, "base64url").toString("utf8")
+  expect(decoded).not.toContain(ALICE)
+  expect(decoded).not.toContain(NO_CHAT_ROW)
+  const second = await listExcluding([NO_CHAT_ROW, ALICE], { limit: 1, cursor: first.next })
+  expect(second.contacts?.map((row) => row.name)).toEqual(["Dave"])
+  expect(second.next).toBeUndefined()
+  expect((await listExcluding([ALICE], { query: "alice" })).contacts).toEqual([])
+})
+
+test("an empty setting lists as an unset one does", async () => {
+  seed([{ uuid: ALICE, name: "Alice" }])
+  expect(await listExcluding([])).toEqual(await list())
+})
+
+test("refuses a cursor taken under another setting, and one taken without it", async () => {
+  seed([
+    { uuid: ALICE, name: "Alice" },
+    { uuid: BOB, name: "Bob" },
+    { uuid: NO_CHAT_ROW, name: "Carol" },
+  ])
+  const plain = await list({ limit: 1 })
+  await expect(listExcluding([NO_CHAT_ROW], { cursor: plain.next })).rejects.toMatchObject({
+    code: "invalid_argument",
+    message: "cursor is not a cursor this tool returned.",
+  })
+  const narrowed = await listExcluding([NO_CHAT_ROW], { limit: 1 })
+  await expect(list({ cursor: narrowed.next })).rejects.toMatchObject({ code: "invalid_argument" })
+  await expect(listExcluding([NO_CHAT_ROW, BOB], { cursor: narrowed.next })).rejects.toMatchObject({
+    code: "invalid_argument",
+  })
+})
+
+test("a malformed setting fails closed without echoing it", async () => {
+  seed([{ uuid: ALICE, name: "Alice" }])
+  const error = await listExcluding(["secret-typo"]).then(
+    () => undefined,
+    (caught: Error) => caught,
+  )
+  expect(error).toMatchObject({ code: "invalid_argument" })
+  expect(error?.message).toContain("exclude_chats")
+  expect(error?.message).not.toContain("secret-typo")
+})
 
 test("publishes read annotations", () => {
   expect(annotations(signalContactRead)).toEqual({

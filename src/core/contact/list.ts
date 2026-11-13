@@ -1,5 +1,7 @@
 import { Buffer } from "node:buffer"
 import { z } from "zod"
+import { excludedCondition } from "../chat/excluded"
+import { fingerprint } from "../chat/filter"
 import { ToolError } from "../errors"
 import { foldCase } from "../fold"
 import { UUID_PATTERN } from "../signal/ids"
@@ -17,6 +19,7 @@ const cursorShape = z.strictObject({
   query: z.string(),
   sort: z.string(),
   uuid: z.string().regex(UUID_PATTERN),
+  excluded: z.string().optional(),
 })
 
 type ContactRow = {
@@ -32,13 +35,28 @@ function displayName(row: ContactRow): string | null {
   return row.name || row.profile_name || row.username || row.number || null
 }
 
-function cursorOf(cursor: string | undefined, account: string, query: string): z.infer<typeof cursorShape> | undefined {
+/**
+ * A digest of the excluded chats in a fixed order, so a cursor binds the set and not the order it was given in,
+ * without carrying the ids to whoever reads the cursor; absent when empty.
+ */
+function excludedKey(excluded: ReadonlySet<string>): string | undefined {
+  return excluded.size === 0 ? undefined : fingerprint([...excluded].sort())
+}
+
+function cursorOf(
+  cursor: string | undefined,
+  account: string,
+  query: string,
+  excluded: ReadonlySet<string>,
+): z.infer<typeof cursorShape> | undefined {
   if (cursor === undefined) return undefined
   try {
     const decoded = Buffer.from(cursor, "base64url")
     if (decoded.toString("base64url") !== cursor) throw new Error()
     const value = cursorShape.parse(JSON.parse(decoded.toString("utf8")))
-    if (value.account !== account || value.query !== query) throw new Error()
+    if (value.account !== account || value.query !== query || value.excluded !== excludedKey(excluded)) {
+      throw new Error()
+    }
     return value
   } catch {
     throw new ToolError("invalid_argument", "cursor is not a cursor this tool returned.")
@@ -57,15 +75,24 @@ function entry(row: ContactRow): z.infer<typeof contact> {
   }
 }
 
-export function listContacts(paths: LabelPaths, args: { query?: string; limit?: number; cursor?: string }) {
+export function listContacts(
+  paths: LabelPaths,
+  args: { query?: string; limit?: number; cursor?: string },
+  excluded: ReadonlySet<string>,
+) {
   const query = foldCase(args.query ?? "")
-  const cursor = cursorOf(args.cursor, paths.label, query)
+  const cursor = cursorOf(args.cursor, paths.label, query, excluded)
+  const condition = excludedCondition("uuid", excluded)
   const limit = Math.min(args.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
   const mirror = openMirrorForRead(paths.mirror)
   try {
     const me = getMeta(mirror)[ACCOUNT_UUID_META]
     const rows = (
-      mirror.prepare("SELECT uuid, name, profile_name, number, username, blocked FROM contacts").all() as ContactRow[]
+      mirror
+        .prepare(
+          `SELECT uuid, name, profile_name, number, username, blocked FROM contacts${condition ? ` WHERE ${condition.sql}` : ""}`,
+        )
+        .all(...(condition?.params ?? [])) as ContactRow[]
     )
       .filter(
         (row) =>
@@ -93,6 +120,7 @@ export function listContacts(paths: LabelPaths, args: { query?: string; limit?: 
                 query,
                 sort: last.sort,
                 uuid: last.row.uuid,
+                excluded: excludedKey(excluded),
               }),
             ).toString("base64url"),
           }

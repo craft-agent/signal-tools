@@ -5,7 +5,7 @@ import { labelPaths } from "../signal/labels"
 import { openMirrorForWrite, setMeta } from "../signal/mirror"
 import { ACCOUNT_UUID_META } from "../signal/mirror-meta"
 import { ALICE, BOB, ME, NUMBER, makeTempDir } from "../signal/mirror.testing"
-import { invoke } from "../tool"
+import { invoke, type ToolOptionValue } from "../tool"
 import { signalContactRead } from "./read"
 
 const OTHER_NUMBER = "+15555550124"
@@ -51,6 +51,46 @@ test("matches number or recipient and returns requested order, not daemon order"
   })
   expect(fake.calls).toEqual([{ method: "getUserStatus", params: { recipient: [NUMBER, OTHER_NUMBER, THIRD_NUMBER] } }])
   expect(existsSync(labelPaths(stateDir, "default").mirror)).toBe(false)
+})
+
+function checkExcluding(excluded: ToolOptionValue, numbers: string[]) {
+  return invoke(
+    signalContactRead,
+    { method: "check", numbers },
+    { cwd: stateDir, stateDir, options: { exclude_chats: excluded } },
+  )
+}
+
+test("reports a number that resolves to an excluded person as an unavailable one, keeping order", async () => {
+  await serve({
+    result: [
+      { number: THIRD_NUMBER, uuid: BOB, isRegistered: true },
+      { number: NUMBER, uuid: ALICE.toUpperCase(), isRegistered: true },
+      { number: OTHER_NUMBER, isRegistered: false },
+    ],
+  })
+  const excluded = (await checkExcluding([ALICE], [NUMBER, OTHER_NUMBER, THIRD_NUMBER])).numbers
+  expect(excluded).toEqual([
+    { number: NUMBER, on_signal: false },
+    { number: OTHER_NUMBER, on_signal: false },
+    { number: THIRD_NUMBER, on_signal: true, chat: BOB },
+  ])
+  expect(Object.keys(excluded?.[0] ?? {})).toEqual(Object.keys(excluded?.[1] ?? {}))
+})
+
+test("a check with no or an empty setting is unchanged", async () => {
+  await serve({ result: [{ number: NUMBER, uuid: ALICE, isRegistered: true }] })
+  const expected = [{ number: NUMBER, on_signal: true, chat: ALICE }]
+  expect((await check()).numbers).toEqual(expected)
+  expect((await checkExcluding([], [NUMBER])).numbers).toEqual(expected)
+})
+
+test("a malformed setting fails before the daemon is asked, without echoing it", async () => {
+  const fake = await serve({ result: [] })
+  const error = await failureOf(checkExcluding(["secret-typo"], [NUMBER]))
+  expect(error).toMatchObject({ code: "invalid_argument" })
+  expect(error.message).not.toContain("secret-typo")
+  expect(fake.calls).toEqual([])
 })
 
 test("normalizes separators and collapses duplicates in input order", async () => {
