@@ -1,6 +1,8 @@
 import { messageId } from "../signal/ids"
 import type { Mirror } from "../signal/mirror"
-import { placeholders } from "./sql"
+
+/** How many messages one related-rows query takes, two parameters each, well under SQLite's limit on parameters. */
+const MESSAGES_PER_QUERY = 200
 
 /** The columns of `messages` that a message entry is built from. */
 export const MESSAGE_COLUMNS =
@@ -61,32 +63,36 @@ function push<T>(map: Map<string, T[]>, key: string, value: T): void {
 }
 
 /**
- * Reads the reactions and earlier versions of `rows` in two queries, by the
- * authors and the span of times the rows cover, and keeps those of the rows
- * themselves.
+ * Reads the reactions and earlier versions of `rows`, by the exact
+ * `(author, time)` of each message, so no row of another message, of an
+ * excluded chat's among them, is read. Each table takes a query per chunk of
+ * messages, within SQLite's limit on parameters.
  */
 export function loadRelated(mirror: Mirror, rows: readonly StoredMessage[]): Related {
   const related: Related = { reactions: new Map(), versions: new Map() }
-  const messages = rows.filter((row) => row.kind === "message")
-  if (messages.length === 0) return related
-  const wanted = new Set(messages.map((row) => messageId(row.author, row.ts)))
-  const authors = [...new Set(messages.map((row) => row.author))]
-  const times = messages.map((row) => row.ts)
-  const params = [...authors, Math.min(...times), Math.max(...times)]
-  const where = `author IN (${placeholders(authors.length)}) AND ts BETWEEN ? AND ?`
-  const reactions = mirror
-    .prepare(`SELECT author, ts, reactor, emoji FROM reactions WHERE ${where} ORDER BY at, reactor`)
-    .all(...params) as (StoredReaction & { author: string; ts: number })[]
-  for (const row of reactions) {
-    const id = messageId(row.author, row.ts)
-    if (wanted.has(id)) push(related.reactions, id, { reactor: row.reactor, emoji: row.emoji })
-  }
-  const versions = mirror
-    .prepare(`SELECT author, ts, rev_ts, body, mentions FROM edits WHERE ${where} ORDER BY rev_ts`)
-    .all(...params) as (StoredVersion & { author: string; ts: number })[]
-  for (const row of versions) {
-    const id = messageId(row.author, row.ts)
-    if (wanted.has(id)) push(related.versions, id, { rev_ts: row.rev_ts, body: row.body, mentions: row.mentions })
+  const keys = new Map<string, StoredMessage>()
+  for (const row of rows) if (row.kind === "message") keys.set(messageId(row.author, row.ts), row)
+  const wanted = [...keys.values()]
+  for (let start = 0; start < wanted.length; start += MESSAGES_PER_QUERY) {
+    const chunk = wanted.slice(start, start + MESSAGES_PER_QUERY)
+    const where = chunk.map(() => "(author = ? AND ts = ?)").join(" OR ")
+    const params = chunk.flatMap((row) => [row.author, row.ts])
+    const reactions = mirror
+      .prepare(`SELECT author, ts, reactor, emoji FROM reactions WHERE ${where} ORDER BY at, reactor`)
+      .all(...params) as (StoredReaction & { author: string; ts: number })[]
+    for (const row of reactions) {
+      push(related.reactions, messageId(row.author, row.ts), { reactor: row.reactor, emoji: row.emoji })
+    }
+    const versions = mirror
+      .prepare(`SELECT author, ts, rev_ts, body, mentions FROM edits WHERE ${where} ORDER BY rev_ts`)
+      .all(...params) as (StoredVersion & { author: string; ts: number })[]
+    for (const row of versions) {
+      push(related.versions, messageId(row.author, row.ts), {
+        rev_ts: row.rev_ts,
+        body: row.body,
+        mentions: row.mentions,
+      })
+    }
   }
   return related
 }
