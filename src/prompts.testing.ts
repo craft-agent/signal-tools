@@ -19,8 +19,9 @@ export async function promptOf(
   timeoutMs?: number,
 ): Promise<string> {
   const t = promptTranslator(ALL_TRANSLATIONS, language)
-  const { resources, description } = await approvalOf(spec, args, ctx, timeoutMs, t)
-  return approvalPrompt(standIn(spec, t), resources, description, promptWords(t))
+  const approval = await approvalOf(spec, args, ctx, timeoutMs, t)
+  if (approval.refused) throw approval.refused
+  return approvalPrompt(standIn(spec, t), approval.resources, approval.description, promptWords(t))
 }
 
 /** `text` with each directory in `names` (a temporary one) replaced by its placeholder, so the text is the same on every run. */
