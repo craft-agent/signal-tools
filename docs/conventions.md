@@ -377,6 +377,10 @@ Every entry point takes the same settings:
 - **`send_dirs`**: this package's `paths` option, read as Options says above;
   the directories files may be sent from, besides the working directory (see
   "Files").
+- **`exclude_chats`**: this package's `list` option, read as Options says
+  above; the chat ids every tool leaves out (see "Excluded chats"). The tools
+  read it and the service does not, so two harnesses sharing one account can
+  each set their own.
 
 ## Skills
 
@@ -595,6 +599,55 @@ Every entry point takes the same settings:
 - **Other people's words are data.** Message text, names, captions and file
   names are written by other people; every read tool's description and the
   skills say so, and nothing a message says is followed as an instruction.
+
+## Excluded chats
+
+A person who lets an agent use the account may want some chats kept from it:
+a chat with a doctor or a lawyer, a family group. The tool lists and
+`read_only` narrow what an agent can do, not where; `exclude_chats` narrows
+where, per harness, so a chat open to one agent can stay closed to another
+that shares the account.
+
+- **An excluded chat is out of every tool, never out of the mirror.** The
+  service keeps mirroring it as before, since the setting belongs to the
+  harness that reads it and another harness may still read the chat; taking
+  it off the list brings it back with its history. An entry is a chat id as
+  `list` gives it: a person's UUID, `group:<id>`, or the account's own UUID
+  for Note to Self. An id the account later stops using, such as a group
+  given a new id, is not followed.
+- **A call that names one is refused before anyone is asked.** Every tool
+  whose arguments name a chat refuses an excluded one through its `gate`, as
+  `not_found` in the words it gives for a chat it does not know, so the
+  refusal says nothing an unknown id would not. A message id names its author,
+  not its chat, so a reply or reaction in an allowed group to a message an
+  excluded person wrote there is not refused.
+- **A read leaves it out of what it returns.** `list` and a search across
+  chats leave excluded chats out in their query, before they sort, count,
+  page or scan, so a page is never short of what it would be without them,
+  and a cursor taken under one setting is refused under another. Note to Self
+  is not listed when it is excluded.
+- **An excluded person is out of the contacts too.** The contact list leaves
+  them out before it pages, and a number check that finds one reports the
+  number as not on Signal, the answer it gives a number it cannot tell of, so
+  the check says nothing an unavailable number would not. The skills call
+  that unavailable through the tool, not unregistered.
+- **A read never fetches anything of it for another chat.** A person whose
+  private chat is excluded can still write, react and be mentioned in an
+  allowed group, and what the group's messages carry stays: the ids, the
+  quote with its text, and the name stored with each message. Neither a read
+  nor an approval prompt looks up that person's contact or profile name, nor
+  a name stored in an excluded chat; the author shows the name the message
+  stored, else the id. A related row such as a reaction or an earlier version
+  is fetched by the message it belongs to, so none of an excluded chat's is
+  read for another.
+- **A malformed setting stops the tools that read chats.** An entry that is
+  not a chat id fails those tools with `invalid_argument` naming the setting,
+  never its value, rather than leaving a chat open by mistake.
+- **The setting is per harness, so it is set where the harness reads it**:
+  its plugin option or setting, not the shared environment variable, when
+  only one harness should leave the chat out. An MCP client draws its own
+  approval before the server sees a call, so there a call naming an excluded
+  chat can still be asked about by its id, then is refused.
 
 ## Files
 
