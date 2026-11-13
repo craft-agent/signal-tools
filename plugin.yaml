@@ -9,6 +9,9 @@ provides_tools:
   - signal_contact_read
   - signal_file_save
   - signal_file_send
+  - signal_grant_create
+  - signal_grant_read
+  - signal_grant_revoke
   - signal_message_delete
   - signal_message_edit
   - signal_message_react
@@ -21,6 +24,12 @@ config_schema:
   read_only:
     type: bool
     description: Registers no tool that writes. Wins over every other setting.
+  unattended:
+    type: bool
+    description: "No person can answer: writes run only under a grant that covers them."
+  grants_dir:
+    type: str
+    description: Where grants and their use are kept; default under the user's state directory.
   tools:
     type: list
     description: Single tools to add by id, whatever their toolset.
