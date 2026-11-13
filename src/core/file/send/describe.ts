@@ -1,3 +1,4 @@
+import { excludedChats } from "../../chat/excluded"
 import { withMirror } from "../../chat/open"
 import { sizeFact } from "../../facts"
 import { checkedCaption, messageReference } from "../../message/arguments"
@@ -60,7 +61,7 @@ async function describeFiles(
   const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
   const { subject, replyFacts, quoted, reply } = await withMirror(ctx, args.account, (mirror, me) => {
     const prepared = prepareSend(mirror, me, { chat: args.chat, replyTo }, Date.now())
-    const subject = chatSubject(mirror, prepared)
+    const subject = chatSubject(mirror, prepared, excludedChats(ctx))
     const reply = prepared.quote
       ? replyHeadline(subject, prepared.quote, args.files.length === 1 ? REPLY_ONE_HEADLINES : REPLY_HEADLINES)
       : undefined

@@ -38,6 +38,7 @@ export function aroundMessage(
   me: string | null,
   args: Pick<ChatReadInput, "chat" | "id" | "before_count" | "after_count">,
   now: number,
+  excluded: ReadonlySet<string>,
 ): ChatReadOutput {
   const chat = requireChat(mirror, me, args.chat, "around")
   if (args.id === undefined) {
@@ -68,7 +69,7 @@ export function aroundMessage(
   const older = side("<", "DESC", beforeCount)
   const newer = side(">", "ASC", afterCount)
 
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   people.load([chat.id])
   const header = chatHeader(chat, people)
   const [anchorEntry, ...rest] = messageEntries(mirror, people, [anchor, ...older, ...newer], now)

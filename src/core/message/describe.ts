@@ -33,10 +33,10 @@ function membersPin(members: string[]): string {
     .digest("hex")
 }
 
-/** Reads what the description of a write to `prepared` says of its chat. */
-export function chatSubject(mirror: Mirror, prepared: ChatOfCall): ChatSubject {
+/** Reads what the description of a write to `prepared` says of its chat; the people of an excluded chat are never looked up. */
+export function chatSubject(mirror: Mirror, prepared: ChatOfCall, excluded: ReadonlySet<string>): ChatSubject {
   const { chat, me, noteToSelf } = prepared
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   const isGroup = chat.kind === "group"
   if (!noteToSelf && !isGroup) people.load([chat.id])
 

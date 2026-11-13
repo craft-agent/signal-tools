@@ -81,7 +81,7 @@ function entryOf(
   const entry: MessageEntry = {
     id,
     time: formatLocalTime(row.ts),
-    from: row.from_me ? OWN_NAME : people.who(row.author),
+    from: row.from_me ? OWN_NAME : people.who(row.author, row.author_name),
   }
   if (!row.from_me) entry.from_id = row.author
   if (row.kind === "timer") {

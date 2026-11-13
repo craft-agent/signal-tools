@@ -12,7 +12,7 @@ let people: People
 beforeEach(() => {
   t = createChatFixture()
   t.contacts({ uuid: ALICE, name: "Alice" }, { uuid: BOB, number: BOB_NUMBER }, { uuid: ME, number: NUMBER })
-  people = new People(t.mirror, ME)
+  people = new People(t.mirror, ME, new Set())
   people.load([ALICE, BOB, CAROL])
 })
 

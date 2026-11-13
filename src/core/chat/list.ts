@@ -144,7 +144,7 @@ export function listChats(
   const after = args.cursor === undefined ? undefined : readCursor(args.cursor, "cursor", listCursor)
   const filter = fingerprint(query, unreadOnly, [...excluded].sort())
   if (after && after.filter !== filter) throw notACursor("cursor")
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   const unread = unreadCounts(mirror, excluded)
   let chats = allChats(mirror, me, excluded)
   if (after)

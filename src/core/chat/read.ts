@@ -59,11 +59,11 @@ export const signalChatRead = defineTool({
         case "list":
           return listChats(mirror, me, args, now, excluded)
         case "view":
-          return viewChat(mirror, me, args, now)
+          return viewChat(mirror, me, args, now, excluded)
         case "search":
           return searchMessages(mirror, me, args, now, excluded)
         case "around":
-          return aroundMessage(mirror, me, args, now)
+          return aroundMessage(mirror, me, args, now, excluded)
       }
     })
   },

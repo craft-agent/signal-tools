@@ -1,4 +1,5 @@
 import { existingChat, isNoteToSelf } from "../chat/chat-rows"
+import { excludedChats } from "../chat/excluded"
 import { withMirror } from "../chat/open"
 import { authorFacts, chatHeadline, chatSubject, filesFacts } from "../message/describe"
 import type { CallDescription, ToolContext } from "../tool"
@@ -18,7 +19,7 @@ export function fileSaveDescriber(now: () => number) {
     withMirror(ctx, args.account, (mirror, me) => {
       const message = findMessageFiles(mirror, me, args.chat, args.id, now())
       const chat = existingChat(mirror, me, message.chat)
-      const subject = chatSubject(mirror, { chat, me, noteToSelf: isNoteToSelf(chat.id, me) })
+      const subject = chatSubject(mirror, { chat, me, noteToSelf: isNoteToSelf(chat.id, me) }, excludedChats(ctx))
       const headline = chatHeadline(subject, FILE_WORDS.saveHeadline, FILE_WORDS.saveHeadlineNote)
       return {
         ...(headline && { headline }),

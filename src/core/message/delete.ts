@@ -1,5 +1,5 @@
 import { unknownChat } from "../chat/chat-rows"
-import { refuseExcludedChats } from "../chat/excluded"
+import { excludedChats, refuseExcludedChats } from "../chat/excluded"
 import { readList } from "../chat/message-rows"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
@@ -43,7 +43,7 @@ export const signalMessageDelete = defineTool({
     return withMirror(ctx, args.account, (mirror, me) => {
       const prepared = prepareChat(mirror, me, args.chat, "delete")
       const message = findOwnMessage(mirror, prepared.chat.id, reference, prepared.me, Date.now(), "delete")
-      const subject = chatSubject(mirror, prepared)
+      const subject = chatSubject(mirror, prepared, excludedChats(ctx))
       return {
         headline: chatHeadline(subject, MESSAGE_WORDS.deleteHeadline, MESSAGE_WORDS.deleteHeadlineNote),
         facts: [

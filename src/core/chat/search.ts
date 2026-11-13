@@ -139,7 +139,7 @@ export function searchMessages(
   }
 
   const page = hits
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   const entries = messageEntries(mirror, people, page, now)
   const refs = chatRefs(mirror, people, page)
   entries.forEach((entry, index) => {
