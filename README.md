@@ -558,8 +558,9 @@ way Signal Desktop does, through [signal-cli](https://github.com/AsamK/signal-cl
 which you install yourself. They never read another client's data.
 
 - **Each linked device has a label**, 1 to 24 lowercase letters, digits and
-  `_` (`default` when linking names none). A tool's `account` argument picks
-  the label; leave it out when only one device is linked.
+  `_` (`default` when linking names none); `grants` is reserved for the grants
+  directory. A tool's `account` argument picks the label; leave it out when
+  only one device is linked.
 - **Each label keeps its state in one directory**, `<state_dir>/<label>/`
   (mode 700): signal-cli's data and keys, the daemon's socket, the mirror of
   received messages, and the copies of files being sent. `state_dir` defaults
