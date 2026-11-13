@@ -41,7 +41,9 @@ export function deliveryFields(request: string) {
       .number()
       .int()
       .optional()
-      .describe(`A group (or ${request} with a failure entry): how many recipients Signal accepted it for.`),
+      .describe(
+        `A group (or ${request} with a failure entry): how many recipients Signal accepted it for. The user's own other devices are not counted, and whether they show it is not known.`,
+      ),
     not_reached: z
       .array(notReached)
       .optional()

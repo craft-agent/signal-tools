@@ -138,6 +138,15 @@ describe("a message that is more than text", () => {
   })
 })
 
+test("a reply whose stored quote has neither text nor files cannot be edited", async () => {
+  t.ownMessage(OWN + 1, { message: "got it", quote: { id: 5000, authorUuid: ALICE } })
+  await expectRefused(
+    { id: messageId(ME, OWN + 1) },
+    "invalid_argument",
+    "This reply's quote has no text and no file, and Signal on iPhone does not show a reply whose quote is empty, so it cannot be edited.",
+  )
+})
+
 describe("the text", () => {
   test("the text the message has is refused, also with blank space around it", async () => {
     await expectRefused({ text: "first" }, "invalid_argument")

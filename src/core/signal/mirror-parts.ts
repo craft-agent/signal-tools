@@ -27,6 +27,8 @@ export type StoredQuote = {
   author: string | null
   text: string | null
   mentions?: StoredMention[]
+  /** The quoted message's files by content type and name, as the quote names them; absent when none. */
+  attachments?: StoredAttachment[]
 }
 
 /** The integer in `value`, or null. */
@@ -107,5 +109,14 @@ export function readQuote(quote: unknown): StoredQuote | null {
   }
   const mentions = readMentions(quote.mentions)
   if (mentions.length > 0) stored.mentions = mentions
+  const attachments: StoredAttachment[] = []
+  for (const item of entries(quote.attachments)) {
+    if (!isRecord(item)) continue
+    const type = textOrNull(item.contentType)
+    const name = textOrNull(item.filename)
+    if (!type && !name) continue
+    attachments.push({ ...(type ? { type } : {}), ...(name ? { name } : {}) })
+  }
+  if (attachments.length > 0) stored.attachments = attachments
   return stored
 }

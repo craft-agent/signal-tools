@@ -659,7 +659,16 @@ Every entry point takes the same settings:
 - **A reply names the quoted message by id.** The quote carries that
   message's author and sent time, which is what Signal points at, and its
   text as the mirror has it at the time of the send, as Signal's own clients
-  copy it. A message deleted for everyone or expired is not quoted.
+  copy it. The quote also carries the content type and file name of the
+  message's first file, as Signal's own clients send it, without a preview
+  image, since signal-cli takes a third part after ":" for a preview file to
+  upload: a file name that is empty or holds ":" is left out, leaving only
+  the type, and a file whose type is unknown or holds ":" is not quoted. A
+  message deleted for everyone or expired is not quoted. A reply whose quote
+  would carry neither text nor a file, such as one to a sticker, is refused,
+  since Signal's iPhone app does not show a message with such a quote at all;
+  the reply can go without `reply_to`. An edit of a reply whose stored quote
+  is like that is refused for the same reason.
 - **A send records itself in the mirror** once Signal accepts it, since
   signal-cli does not report its own sends back. It writes only that message,
   never migrates, and leaves a mirror of another version alone. A record that

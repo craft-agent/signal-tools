@@ -2,10 +2,10 @@ import { readJson, readList } from "../chat/message-rows"
 import { ToolError } from "../errors"
 import type { Mirror } from "../signal/mirror"
 import type { StoredMention, StoredQuote } from "../signal/mirror-parts"
-import { MAX_EDITS } from "./constants"
+import { EMPTY_QUOTE_EDIT_MESSAGE, MAX_EDITS } from "./constants"
 import { findOwnMessage, type OwnMessage } from "./own"
 import type { PreparedChat } from "./prepare"
-import { quoteOfStored, type Quote } from "./quote"
+import { isEmptyQuote, quoteOfStored, type Quote } from "./quote"
 
 /** What an edit needs from the mirror, read before anything is sent. */
 export type PreparedEdit = {
@@ -36,8 +36,8 @@ function editsMade(mirror: Mirror, author: string, message: OwnMessage): number 
 /**
  * Checks, in the mirror, that the user's message can be edited to `text`.
  * `invalid_argument` for a message that is not only text (view-once, files, a
- * sticker), a reply whose quote cannot be sent again and a text that changes
- * nothing; `forbidden` for one edited
+ * sticker), a reply whose quote cannot be sent again or would carry neither
+ * text nor a file, and a text that changes nothing; `forbidden` for one edited
  * `MAX_EDITS` times already. See `findOwnMessage` for the rest.
  */
 export function prepareEdit(
@@ -70,6 +70,7 @@ export function prepareEdit(
       "This reply's quote cannot be sent again, so editing it would drop the quote.",
     )
   }
+  if (quote && isEmptyQuote(quote)) throw new ToolError("invalid_argument", EMPTY_QUOTE_EDIT_MESSAGE)
   return {
     timestamp: message.ts,
     body: message.body,

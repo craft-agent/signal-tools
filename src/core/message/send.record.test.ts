@@ -67,6 +67,29 @@ describe("a send that Signal accepted", () => {
     })
   })
 
+  test("a reply to a file-only message keeps its quoted file as a transcript does", async () => {
+    t.ingest(dataFrom(ALICE, 5100, { attachments: [{ contentType: "image/png", filename: "a.png" }] }))
+    await t.send({ chat: ALICE, text: "got it", reply_to: messageId(ALICE, 5100) })
+    t.ingest(
+      sentTo(ALICE, SENT + 1, {
+        message: "got it",
+        quote: { id: 5100, authorUuid: ALICE, attachments: [{ contentType: "image/png", filename: "a.png" }] },
+      }),
+    )
+    expect(stored(SENT)).toEqual(stored(SENT + 1))
+    expect(JSON.parse(String(stored(SENT).quote))).toEqual({
+      id: 5100,
+      author: ALICE,
+      text: null,
+      attachments: [{ type: "image/png", name: "a.png" }],
+    })
+    const messages = await t.messages(ALICE)
+    expect(messages.find((message) => message.id === messageId(ME, SENT))?.reply_to).toEqual({
+      id: messageId(ALICE, 5100),
+      text: null,
+    })
+  })
+
   test("takes the chat's disappearing timer, started at the sent time, as a transcript does", async () => {
     t.ingest(sentTo(ALICE, 5200, { isExpirationUpdate: true, expiresInSeconds: 3600 }))
     await t.send({ chat: ALICE, text: "hello" })

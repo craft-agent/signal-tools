@@ -61,6 +61,16 @@ function sentTranscript(
             authorUuid: quote.author,
             text: quote.text,
             mentions: quote.mentions,
+            ...(quote.attachment
+              ? {
+                  attachments: [
+                    {
+                      contentType: quote.attachment.type,
+                      ...(quote.attachment.name ? { filename: quote.attachment.name } : {}),
+                    },
+                  ],
+                }
+              : {}),
           },
         }
       : {}),

@@ -145,6 +145,47 @@ describe("what a message carries", () => {
     })
   })
 
+  test("a quote keeps its files' types and names, never their thumbnails", () => {
+    t.ingest(
+      dataFrom(ALICE, 1000, {
+        message: "yes",
+        quote: {
+          id: 900,
+          authorUuid: ME,
+          attachments: [
+            { contentType: "image/png", filename: "a.png", thumbnail: { id: "preview", file: "/private/preview" } },
+            { contentType: "video/mp4" },
+            { filename: "notes.txt" },
+            null,
+            "not a file",
+            { contentType: 7, filename: false },
+            { contentType: "", filename: "" },
+          ],
+        },
+      }),
+    )
+    expect(JSON.parse(messageRow(t.mirror, ALICE, 1000)?.quote as string)).toEqual({
+      id: 900,
+      author: ME,
+      text: null,
+      attachments: [{ type: "image/png", name: "a.png" }, { type: "video/mp4" }, { name: "notes.txt" }],
+    })
+  })
+
+  test("a quote with no usable files leaves attachments absent", () => {
+    t.ingest(
+      dataFrom(ALICE, 1000, {
+        message: "yes",
+        quote: { id: 900, authorUuid: ME, attachments: [null, [], { contentType: 7 }, { filename: "" }] },
+      }),
+    )
+    expect(JSON.parse(messageRow(t.mirror, ALICE, 1000)?.quote as string)).toEqual({
+      id: 900,
+      author: ME,
+      text: null,
+    })
+  })
+
   test("a quote without a time is dropped", () => {
     t.ingest(dataFrom(ALICE, 1000, { message: "yes", quote: { text: "no id" } }))
     expect(messageRow(t.mirror, ALICE, 1000)?.quote).toBeNull()

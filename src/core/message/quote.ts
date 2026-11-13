@@ -1,10 +1,23 @@
 import { readList } from "../chat/message-rows"
+import { ToolError } from "../errors"
 import type { Mirror } from "../signal/mirror"
 import type { StoredAttachment, StoredMention, StoredQuote } from "../signal/mirror-parts"
+import { EMPTY_QUOTE_SEND_MESSAGE } from "./constants"
 import { findLiveRow } from "./lookup"
 
 /** A mention sits at one placeholder character of the quoted text. */
 const QUOTED_MENTION_LENGTH = 1
+
+/** What separates a quoted file's type, name and preview path in signal-cli's `quoteAttachment`. */
+const QUOTED_ATTACHMENT_SEPARATOR = ":"
+
+/** Whether `part` can go into a `quoteAttachment` as one part: not empty, and not holding the separator. */
+function isQuotablePart(part: string | undefined): part is string {
+  return !!part && !part.includes(QUOTED_ATTACHMENT_SEPARATOR)
+}
+
+/** The content type and optional name of a file, as Signal's clients quote it. */
+export type QuotedAttachment = { type: string; name?: string }
 
 /** The message a reply quotes, as the mirror has it now. */
 export type Quote = {
@@ -16,6 +29,8 @@ export type Quote = {
   text: string | null
   /** The mentions of that text that name someone. */
   mentions: StoredMention[]
+  /** The quoted message's first file, by content type and name, as Signal's clients quote it; absent when it has none or its type is unknown. */
+  attachment?: QuotedAttachment
   /** Whether the quoted message is view-once (1) or not (0); only the description of the call reads it, `quoteParams` ignores it. */
   viewOnce?: number
   /** The quoted files' trimmed sent names, null when unknown; only the description reads them, `quoteParams` ignores them. */
@@ -24,9 +39,21 @@ export type Quote = {
   textMentions?: StoredMention[]
 }
 
+/** Whether the quote carries neither text nor a file; Signal's iPhone app does not show a reply with such a quote at all. */
+export function isEmptyQuote(quote: Quote): boolean {
+  return !quote.text && !quote.attachment
+}
+
 /** The mentions that name someone, as a quote carries them. */
 function namedMentions(mentions: StoredMention[]): StoredMention[] {
   return mentions.filter((mention) => mention.uuid ?? mention.number)
+}
+
+/** The first file's type and usable name, without a preview file for signal-cli to upload. */
+export function quotedAttachment(attachments: StoredAttachment[]): QuotedAttachment | undefined {
+  const first = attachments[0]
+  if (!isQuotablePart(first?.type)) return undefined
+  return { type: first.type, ...(isQuotablePart(first.name) ? { name: first.name } : {}) }
 }
 
 /**
@@ -40,10 +67,11 @@ export function quoteOfStored(stored: StoredQuote | null): Quote | null {
     author: stored.author,
     text: stored.text,
     mentions: namedMentions(stored.mentions ?? []),
+    attachment: quotedAttachment(stored.attachments ?? []),
   }
 }
 
-/** The arguments that make the message a reply: the quoted message's time, author, text and mentions. */
+/** The arguments that make the message a reply: the quoted message's time, author, text, mentions and first file. */
 export function quoteParams(quote: Quote): Record<string, unknown> {
   const mentions = quote.mentions.map(
     (mention) => `${mention.start}:${QUOTED_MENTION_LENGTH}:${mention.uuid ?? mention.number}`,
@@ -53,6 +81,13 @@ export function quoteParams(quote: Quote): Record<string, unknown> {
     quoteAuthor: quote.author,
     ...(quote.text ? { quoteMessage: quote.text } : {}),
     ...(mentions.length > 0 ? { quoteMention: mentions } : {}),
+    ...(quote.attachment
+      ? {
+          quoteAttachment: [
+            [quote.attachment.type, quote.attachment.name].filter(Boolean).join(QUOTED_ATTACHMENT_SEPARATOR),
+          ],
+        }
+      : {}),
   }
 }
 
@@ -60,6 +95,7 @@ export function quoteParams(quote: Quote): Record<string, unknown> {
  * The message of `chat` that `reference` names, for a reply to quote. A
  * message of another chat, an unknown one and a timer change are `not_found`
  * alike; so is one deleted for everyone or expired, saying it is gone.
+ * `invalid_argument` for one with neither text nor a quotable file.
  */
 export function findQuote(mirror: Mirror, chat: string, reference: { author: string; ts: number }, now: number): Quote {
   const row = findLiveRow<{
@@ -69,13 +105,17 @@ export function findQuote(mirror: Mirror, chat: string, reference: { author: str
     attachments: string | null
   }>(mirror, chat, reference, "body, mentions, view_once, attachments", now)
   const textMentions = readList<StoredMention>(row.mentions)
-  return {
+  const attachments = readList<StoredAttachment>(row.attachments)
+  const quote: Quote = {
     timestamp: reference.ts,
     author: reference.author,
     text: row.body,
     mentions: namedMentions(textMentions),
+    attachment: quotedAttachment(attachments),
     viewOnce: row.view_once,
-    files: readList<StoredAttachment>(row.attachments).map(({ name }) => name?.trim() || null),
+    files: attachments.map(({ name }) => name?.trim() || null),
     textMentions,
   }
+  if (isEmptyQuote(quote)) throw new ToolError("invalid_argument", EMPTY_QUOTE_SEND_MESSAGE)
+  return quote
 }
