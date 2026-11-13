@@ -1,3 +1,5 @@
+import { unknownChat } from "../chat/chat-rows"
+import { refuseExcludedChats } from "../chat/excluded"
 import { readList } from "../chat/message-rows"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
@@ -34,6 +36,7 @@ export const signalMessageDelete = defineTool({
   class: "administrative",
   input: deleteInput,
   output: deleteOutput,
+  gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
   async describe(args, ctx) {
     const reference = messageReference(args.id, "id")

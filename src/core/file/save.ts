@@ -1,6 +1,8 @@
 import { join } from "node:path"
 import { DEFAULT_LIMITS, type ArchiveLimits } from "../archive/limits"
 import { ArchiveRefused } from "../archive/refused"
+import { unknownChat } from "../chat/chat-rows"
+import { refuseExcludedChats } from "../chat/excluded"
 import { PRIVATE_NOTE } from "../chat/message-schema"
 import { withMirror } from "../chat/open"
 import { isAbortError, isToolError } from "../errors"
@@ -69,6 +71,7 @@ export function createFileSave(host: Partial<FileSaveHost> = {}) {
     describe: fileSaveDescriber(() => machine.now()),
     input,
     output,
+    gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
     async targets(args, ctx) {
       if (!ctx.stateDir || !ctx.downloadDir) return [ANY_TARGET]
       try {

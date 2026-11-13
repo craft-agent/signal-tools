@@ -1,5 +1,7 @@
 import { realpath } from "node:fs/promises"
 import { join, resolve } from "node:path"
+import { unknownChat } from "../../chat/chat-rows"
+import { refuseExcludedChats } from "../../chat/excluded"
 import { withMirror } from "../../chat/open"
 import { ToolError } from "../../errors"
 import { checkedCaption, messageReference } from "../../message/arguments"
@@ -96,6 +98,7 @@ export function createFileSend(limits: Partial<FileSendLimits> = {}) {
     describe: createFileSendDescriber(maxTotalBytes),
     input,
     output,
+    gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
     async targets(args, ctx) {
       const files = await Promise.all(args.files.map(({ path }) => fileTarget(path, ctx.cwd)))
       return [...(await labelTargets(ctx, args.account, args.chat)), ...files]

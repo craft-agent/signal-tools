@@ -1,3 +1,5 @@
+import { unknownChat } from "../chat/chat-rows"
+import { refuseExcludedChats } from "../chat/excluded"
 import { withMirror } from "../chat/open"
 import { defineTool, StepErrors } from "../tool"
 import { checkedText, messageReference } from "./arguments"
@@ -47,6 +49,7 @@ export const signalMessageSend = defineTool({
   class: "add",
   input,
   output,
+  gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat),
   async describe(args, ctx) {
     const text = checkedText(args.text)

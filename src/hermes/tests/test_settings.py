@@ -63,7 +63,10 @@ class DirectorySettingsTest(unittest.TestCase):
     flags = SettingsFlagsTest.flags
 
     def test_the_package_declares_its_directories(self) -> None:
-        self.assertEqual(project.OPTIONS, {"state_dir": "path", "download_dir": "path", "send_dirs": "paths"})
+        self.assertEqual(
+            project.OPTIONS,
+            {"state_dir": "path", "download_dir": "path", "send_dirs": "paths", "exclude_chats": "list"},
+        )
 
     def test_each_directory_becomes_its_flag(self) -> None:
         self.assertEqual(self.flags(state_dir="/custom/path"), ["--state-dir", "/custom/path"])

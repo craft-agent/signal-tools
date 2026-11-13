@@ -1,6 +1,8 @@
 import { ToolError } from "../errors"
 import { defineTool } from "../tool"
 import { aroundMessage } from "./around"
+import { unknownChat } from "./chat-rows"
+import { refuseExcludedChats } from "./excluded"
 import { listChats } from "./list"
 import { withMirror } from "./open"
 import { AROUND_COUNT, input, LIMITS, METHODS, output, type ChatReadInput, type Method } from "./schema"
@@ -47,6 +49,7 @@ export const signalChatRead = defineTool({
   class: "read",
   input,
   output,
+  gate: (args, ctx) => refuseExcludedChats(ctx, args.chat === undefined ? [] : [args.chat], unknownChat),
   async execute(args, ctx) {
     checkArguments(args)
     const now = Date.now()
