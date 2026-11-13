@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { excludedChats } from "../chat/excluded"
 import { ToolError } from "../errors"
 import { pickLabel } from "../signal/labels"
 import { defineTool } from "../tool"
@@ -43,6 +44,9 @@ export const signalContactRead = defineTool({
   class: "read",
   input,
   output,
+  gate: (_args, ctx) => {
+    excludedChats(ctx)
+  },
   async execute(args, ctx) {
     if (!ctx.stateDir) throw new ToolError("internal_error", "The entry point did not supply a state directory.")
     if (args.method === "list" && args.numbers !== undefined) {
@@ -55,6 +59,9 @@ export const signalContactRead = defineTool({
       throw new ToolError("invalid_argument", "query, limit and cursor are only used with method list.")
     }
     const paths = await pickLabel(ctx.stateDir, args.account)
-    return args.method === "list" ? listContacts(paths, args) : checkNumbers(paths, args.numbers, ctx.signal)
+    const excluded = excludedChats(ctx)
+    return args.method === "list"
+      ? listContacts(paths, args, excluded)
+      : checkNumbers(paths, args.numbers, excluded, ctx.signal)
   },
 })

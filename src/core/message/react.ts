@@ -1,3 +1,5 @@
+import { unknownChat } from "../chat/chat-rows"
+import { excludedChats, refuseExcludedChats } from "../chat/excluded"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
 import { defineTool, StepErrors } from "../tool"
@@ -35,6 +37,7 @@ export const signalMessageReact = defineTool({
   class: "overwrite",
   input: reactInput,
   output: reactOutput,
+  gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
   async describe(args, ctx) {
     const request = reactionRequest(args)
@@ -43,7 +46,7 @@ export const signalMessageReact = defineTool({
       const now = Date.now()
       const prepared = prepareChat(mirror, me, args.chat, "react")
       const reaction = prepareReaction(mirror, prepared, target, request, now)
-      const subject = chatSubject(mirror, prepared)
+      const subject = chatSubject(mirror, prepared, excludedChats(ctx))
       const values = { emoji: reaction.emoji }
       const headline = reaction.remove
         ? chatHeadline(

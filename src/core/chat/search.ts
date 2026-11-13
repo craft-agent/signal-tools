@@ -3,6 +3,7 @@ import { clampLimit, encodeCursor, fitItems, notACursor, readCursor } from "../p
 import type { Mirror } from "../signal/mirror"
 import { formatLocalTime } from "../time"
 import { chatHeader, findChats, optionalChat, personIds, type StoredChat } from "./chat-rows"
+import { excludedCondition } from "./excluded"
 import { fingerprint } from "./filter"
 import { messageEntries } from "./message"
 import { cuttableMessage } from "./message-cut"
@@ -88,20 +89,28 @@ export function searchMessages(
   me: string | null,
   args: Pick<ChatReadInput, "query" | "chat" | "after" | "before" | "limit" | "cursor">,
   now: number,
+  excluded: ReadonlySet<string>,
   scan: ScanLimits = SCAN_LIMITS,
 ): ChatReadOutput {
   const words = searchWords(args.query)
   const chat = optionalChat(mirror, me, args.chat, "search")
   const limit = clampLimit(args.limit, LIMITS.search, "limit")
   const range = readRange(args)
-  const filter = fingerprint([...words].sort(), chat?.id ?? null, range.after ?? null, range.before ?? null)
+  const filter = fingerprint(
+    [...words].sort(),
+    chat?.id ?? null,
+    range.after ?? null,
+    range.before ?? null,
+    [...excluded].sort(),
+  )
   const resume = args.cursor === undefined ? undefined : readCursor(args.cursor, "cursor", searchCursor)
   if (resume && resume.filter !== filter) throw notACursor("cursor")
 
   const bounds = rangeConditions(range)
+  const left = excludedCondition("chat", excluded)
   const base = {
-    conditions: ["kind = 'message'", ...(chat ? ["chat = ?"] : []), ...bounds.conditions],
-    params: [...(chat ? [chat.id] : []), ...bounds.params],
+    conditions: ["kind = 'message'", ...(chat ? ["chat = ?"] : []), ...(left ? [left.sql] : []), ...bounds.conditions],
+    params: [...(chat ? [chat.id] : []), ...(left?.params ?? []), ...bounds.params],
   }
   const hits: StoredMessage[] = []
   let position: Position | undefined = resume && { ts: resume.ts, author: resume.author }
@@ -130,7 +139,7 @@ export function searchMessages(
   }
 
   const page = hits
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   const entries = messageEntries(mirror, people, page, now)
   const refs = chatRefs(mirror, people, page)
   entries.forEach((entry, index) => {

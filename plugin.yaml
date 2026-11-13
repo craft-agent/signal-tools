@@ -39,3 +39,6 @@ config_schema:
   send_dirs:
     type: list
     description: The directories files may be sent from, besides the working directory; absolute paths, or ones starting with ~, without commas. Defaults to none.
+  exclude_chats:
+    type: list
+    description: "The chats every tool leaves out: their ids as list returns them (a person's UUID, group:<id>). Defaults to none. Read by tools; the sync service still mirrors them, and no service restart is needed."

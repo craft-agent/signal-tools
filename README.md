@@ -353,10 +353,11 @@ variable, and an option or setting wins over the variable too.
 | `state_dir`     | `--state-dir`     | `SIGNAL_TOOLS_STATE_DIR`     | `path`: where every label's state lives; default `$XDG_STATE_HOME/signal-tools`   |
 | `download_dir`  | `--download-dir`  | `SIGNAL_TOOLS_DOWNLOAD_DIR`  | `path`: where received files are saved; default `~/Downloads/signal-tools`        |
 | `send_dirs`     | `--send-dirs`     | `SIGNAL_TOOLS_SEND_DIRS`     | `paths`: the directories files may be sent from, besides the working directory    |
+| `exclude_chats` | `--exclude-chats` | `SIGNAL_TOOLS_EXCLUDE_CHATS` | `list`: chat ids every tool leaves out, as `signal_chat_read` returns them        |
 
 Lists are comma-separated in a flag or a variable. This package's own settings,
-`state_dir`, `download_dir` and `send_dirs`, are listed in `options` in
-`src/project.ts` and read the same way. A `path` is trimmed; `~` and `~/…`
+`state_dir`, `download_dir`, `send_dirs` and `exclude_chats`, are listed in
+`options` in `src/project.ts` and read the same way. A `path` is trimmed; `~` and `~/…`
 (also with the platform separator) stand for the home directory (`HOME` when it
 is absolute, else the account's). It must then be absolute and reaches the tool
 normalized, without a filesystem check. `paths` is a list of such paths,
@@ -418,6 +419,48 @@ and bounds. Where each harness reads them:
   args = ["-y", "@craftsamo/signal-tools@<version>", "--read-only"]
   env_vars = ["SIGNAL_TOOLS_STATE_DIR", "XDG_STATE_HOME"]
   ```
+
+`exclude_chats` keeps the named chats out of every tool, by id exactly as
+`list` returns it: a person's account id or `group:<id>`. Lists and searches
+leave them out (Note to Self too, when the account's own id is named), and the
+contact list leaves out excluded people. A number check that finds one reports
+the number as not on Signal: that means unavailable through the tools, not
+that the person is unregistered. A call naming an excluded chat fails as
+`not_found`, in the same words as an unknown chat. Messages of another chat
+keep their ids, quotes and stored names, but an excluded person's contact or
+profile name is never looked up, so they show by stored name or id. The sync
+service keeps mirroring them. A malformed entry fails the tools with
+`invalid_argument`, and a group later given a new id is not followed.
+
+Set it per harness, in that harness's plugin option or setting, not the shared
+`SIGNAL_TOOLS_EXCLUDE_CHATS` variable when only one harness should leave a
+chat out. For OpenCode V2, in `opencode.json`:
+
+```json
+{
+  "plugins": [
+    {
+      "package": "@craftsamo/signal-tools@<version>",
+      "options": { "exclude_chats": ["group:<id>"] }
+    }
+  ]
+}
+```
+
+For Hermes, in `config.yaml` (quote each id):
+
+```yaml
+plugins:
+  entries:
+    signal-tools:
+      settings:
+        exclude_chats:
+          - "group:<id>"
+```
+
+OpenCode and Hermes refuse a call naming an excluded chat before asking, and
+the MCP clients may still ask first, as [Reads and writes](#reads-and-writes)
+says.
 
 ### Accounts and the sync service
 

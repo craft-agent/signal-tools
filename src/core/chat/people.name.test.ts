@@ -12,7 +12,7 @@ afterEach(() => {
 
 function loaded(...ids: string[]): People {
   fixture ??= createChatFixture()
-  const people = new People(fixture.mirror, ME)
+  const people = new People(fixture.mirror, ME, new Set())
   people.load(ids)
   return people
 }

@@ -1,4 +1,5 @@
 import type { Mirror } from "../signal/mirror"
+import { excludedCondition } from "./excluded"
 import { placeholders } from "./sql"
 
 /** How many account ids one query takes, well under SQLite's limit on parameters. */
@@ -28,17 +29,23 @@ function inChunks<T>(items: readonly T[], size: number): T[][] {
  * Who the accounts in a result are. Names come from the contacts table in a
  * few queries per `load`, never one per account, and the user's own account is
  * never named here: a result writes it as `me` and never carries its number.
+ * A person whose private chat is excluded is never looked up either, and no
+ * name stored in an excluded chat is used for anyone: they resolve as an
+ * account the mirror knows nothing about.
  */
 export class People {
   readonly #mirror: Mirror
+  readonly #excluded: ReadonlySet<string>
   readonly #known = new Map<string, Person>()
   readonly #ownNumber: string | null
   /** The user's own account id, or null when the mirror has not recorded it. */
   readonly me: string | null
 
-  constructor(mirror: Mirror, me: string | null) {
+  constructor(mirror: Mirror, me: string | null, excluded: ReadonlySet<string>) {
     this.#mirror = mirror
+    this.#excluded = excluded
     this.me = me
+    // The account's own number is read even when Note to Self is excluded: it is the account's own data, and only guards against writing it into a result.
     const own =
       me === null
         ? undefined
@@ -49,7 +56,7 @@ export class People {
 
   /** Reads the accounts in `ids` that are not known yet. */
   load(ids: Iterable<string>): void {
-    const unknown = [...new Set(ids)].filter((id) => id !== this.me && !this.#known.has(id))
+    const unknown = [...new Set(ids)].filter((id) => id !== this.me && !this.#excluded.has(id) && !this.#known.has(id))
     for (const chunk of inChunks(unknown, IDS_PER_QUERY)) this.#loadChunk(chunk)
   }
 
@@ -68,12 +75,13 @@ export class People {
     }
     const nameless = ids.filter((id) => this.#known.get(id)?.name == null)
     if (nameless.length === 0) return
+    const left = excludedCondition("chat", this.#excluded)
     const authors = this.#mirror
       .prepare(
         `SELECT author, author_name, MAX(ts) FROM messages
-         WHERE author IN (${placeholders(nameless.length)}) AND author_name IS NOT NULL GROUP BY author`,
+         WHERE author IN (${placeholders(nameless.length)}) AND author_name IS NOT NULL${left ? ` AND ${left.sql}` : ""} GROUP BY author`,
       )
-      .all(...nameless) as { author: string; author_name: string }[]
+      .all(...nameless, ...(left?.params ?? [])) as { author: string; author_name: string }[]
     for (const row of authors) {
       const person = this.#known.get(row.author)
       if (person) person.author = row.author_name
@@ -102,9 +110,16 @@ export class People {
     return person ? (person.name ?? person.author) : null
   }
 
-  /** How a result names an account: `me` for the user's own, else its display name, else the account id. Call `load` first. */
-  who(id: string): string {
-    return id === this.me ? OWN_NAME : (this.displayName(id) ?? id)
+  /**
+   * How a result names an account: `me` for the user's own, else its display
+   * name, else the account id. An account whose chat is excluded has no display
+   * name, so it shows `storedName`, the name its message was stored with, when
+   * the caller has one. Call `load` first.
+   */
+  who(id: string, storedName: string | null = null): string {
+    if (id === this.me) return OWN_NAME
+    const stored = this.#excluded.has(id) ? storedName : null
+    return this.displayName(id) ?? stored ?? id
   }
 
   /** The number the contacts hold for an account; null when none, and for the user's own account. Call `load` first. */

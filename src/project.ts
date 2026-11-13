@@ -15,7 +15,13 @@ export const PROJECT = {
   /** The toolsets on when a setting names none. */
   defaultToolsets: ["account", "chats", "contacts", "sends"] as readonly string[],
   /** The package's own settings, which the tools themselves read: each snake_case name and its type, with bounds when it needs them. */
-  options: { state_dir: "path", download_dir: "path", send_dirs: "paths" } as Readonly<Record<string, OptionSpec>>,
+  options: {
+    state_dir: "path",
+    download_dir: "path",
+    send_dirs: "paths",
+    /** The chats every tool leaves out: their ids, as `list` returns them; the sync service still mirrors them. */
+    exclude_chats: "list",
+  } as Readonly<Record<string, OptionSpec>>,
   /** The environment variables the tools read besides the settings, which Codex forwards to the server after them. */
   toolVariables: ["XDG_STATE_HOME"] as readonly string[],
 } as const

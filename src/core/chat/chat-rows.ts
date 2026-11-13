@@ -66,10 +66,15 @@ export function requireChatId(chat: string | undefined, method: string): string 
   return chatIdArgument(chat, method)
 }
 
+/** The error for a chat this account's mirror does not have; an excluded chat is refused with the same one. */
+export function unknownChat(): ToolError {
+  return new ToolError("not_found", "No chat with this id in this account's mirror.")
+}
+
 /** The chat with this id, or `not_found` when this mirror has none; the user's own `me` always exists. */
 export function existingChat(mirror: Mirror, me: string | null, id: string): StoredChat {
   const chat = findChat(mirror, id) ?? (isNoteToSelf(id, me) ? ownChat(id) : null)
-  if (!chat) throw new ToolError("not_found", "No chat with this id in this account's mirror.")
+  if (!chat) throw unknownChat()
   return chat
 }
 

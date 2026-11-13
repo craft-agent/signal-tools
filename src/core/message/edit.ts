@@ -1,3 +1,5 @@
+import { unknownChat } from "../chat/chat-rows"
+import { excludedChats, refuseExcludedChats } from "../chat/excluded"
 import { withMirror } from "../chat/open"
 import { messageId } from "../signal/ids"
 import { defineTool, StepErrors } from "../tool"
@@ -33,6 +35,7 @@ export const signalMessageEdit = defineTool({
   class: "overwrite",
   input: editInput,
   output: editOutput,
+  gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat, args.id),
   async describe(args, ctx) {
     const text = checkedText(args.text)
@@ -40,7 +43,7 @@ export const signalMessageEdit = defineTool({
     return withMirror(ctx, args.account, (mirror, me) => {
       const prepared = prepareChat(mirror, me, args.chat, "edit")
       const edit = prepareEdit(mirror, prepared, reference, text, Date.now())
-      const subject = chatSubject(mirror, prepared)
+      const subject = chatSubject(mirror, prepared, excludedChats(ctx))
       return {
         headline: chatHeadline(subject, MESSAGE_WORDS.editHeadline, MESSAGE_WORDS.editHeadlineNote),
         facts: [

@@ -13,9 +13,9 @@ metadata:
 
 Get the chat id first, from `signal_chat_read` or from `signal_contact_read`
 with `method: "check"`; a chat is an id, never a name or a number. The user's
-own account id is Note to Self; it is always in the chat list once the sync
-service has run, so that is where to find it. A group the user left is
-refused. The sync service must be running.
+own account id is Note to Self; it is in the chat list once the sync service
+has run, unless the person keeps it out of reach, so that is where to find it.
+A group the user left is refused. The sync service must be running.
 
 Send `text` exactly as the user wants it: surrounding blank space is trimmed,
 nothing else changes, and it is at most 4,000 characters. Never rephrase,
@@ -39,5 +39,8 @@ verifies it on the phone), the person is not on Signal (`not_found`), or
 Signal rate-limited the send (`rate_limited`; wait). `uncertain` means the
 message may have gone out: ask the user to check the chat on the phone, and
 never send it again without that check.
+
+A chat that is unknown or kept out of reach is refused as `not_found`; do not
+work around it by finding the target another way.
 
 Omit `account` to pick the only linked label; with several, name one.

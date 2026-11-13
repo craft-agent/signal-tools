@@ -38,7 +38,12 @@ function normalizeNumbers(given: string[] | undefined): string[] {
   ]
 }
 
-export async function checkNumbers(paths: LabelPaths, given: string[] | undefined, signal?: AbortSignal) {
+export async function checkNumbers(
+  paths: LabelPaths,
+  given: string[] | undefined,
+  excluded: ReadonlySet<string>,
+  signal?: AbortSignal,
+) {
   const numbers = normalizeNumbers(given)
   let result: unknown
   try {
@@ -63,7 +68,8 @@ export async function checkNumbers(paths: LabelPaths, given: string[] | undefine
   return {
     numbers: numbers.map((number) => {
       const found = entries.find((entry) => entry.number === number || entry.recipient === number)
-      const uuid = found?.isRegistered === true ? accountId(found.uuid) : null
+      const resolved = found?.isRegistered === true ? accountId(found.uuid) : null
+      const uuid = resolved !== null && excluded.has(resolved) ? null : resolved
       return { number, on_signal: uuid !== null, ...(uuid ? { chat: uuid } : {}) }
     }),
     note: NOTE,

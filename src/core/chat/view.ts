@@ -23,6 +23,7 @@ export function viewChat(
   me: string | null,
   args: Pick<ChatReadInput, "chat" | "after" | "before" | "limit" | "cursor">,
   now: number,
+  excluded: ReadonlySet<string>,
 ): ChatReadOutput {
   const chatId = requireChatId(args.chat, "view")
   const limit = clampLimit(args.limit, LIMITS.view, "limit")
@@ -46,7 +47,7 @@ export function viewChat(
     .all(...params, limit + 1) as StoredMessage[]
   const page = fetched.slice(0, limit)
 
-  const people = new People(mirror, me)
+  const people = new People(mirror, me, excluded)
   people.load([chat.id])
   const header = chatHeader(chat, people)
   const entries = messageEntries(mirror, people, page, now)

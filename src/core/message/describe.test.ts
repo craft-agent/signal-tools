@@ -27,12 +27,14 @@ afterEach(async () => {
 })
 
 function subjectOf(chat: string) {
-  return withMirror(fixture, undefined, (mirror, me) => chatSubject(mirror, prepareChat(mirror, me, chat, "send")))
+  return withMirror(fixture, undefined, (mirror, me) =>
+    chatSubject(mirror, prepareChat(mirror, me, chat, "send"), new Set()),
+  )
 }
 
 function authorsOf(author: string, chat = ME) {
   return withMirror(fixture, undefined, (mirror, me) =>
-    authorFacts(chatSubject(mirror, prepareChat(mirror, me, chat, "send")), author),
+    authorFacts(chatSubject(mirror, prepareChat(mirror, me, chat, "send"), new Set()), author),
   )
 }
 
@@ -157,7 +159,7 @@ describe("messageTextFact", () => {
 
   function factOf(value: Parameters<typeof messageTextFact>[2]) {
     return withMirror(fixture, undefined, (mirror, me) =>
-      messageTextFact(chatSubject(mirror, prepareChat(mirror, me, ME, "send")), "Message", value),
+      messageTextFact(chatSubject(mirror, prepareChat(mirror, me, ME, "send"), new Set()), "Message", value),
     )
   }
 

@@ -1,3 +1,5 @@
+import { unknownChat } from "../chat/chat-rows"
+import { excludedChats, refuseExcludedChats } from "../chat/excluded"
 import { withMirror } from "../chat/open"
 import { defineTool, StepErrors } from "../tool"
 import { checkedText, messageReference } from "./arguments"
@@ -47,13 +49,14 @@ export const signalMessageSend = defineTool({
   class: "add",
   input,
   output,
+  gate: (args, ctx) => refuseExcludedChats(ctx, [args.chat], unknownChat),
   targets: (args, ctx) => labelTargets(ctx, args.account, args.chat),
   async describe(args, ctx) {
     const text = checkedText(args.text)
     const replyTo = args.reply_to === undefined ? null : messageReference(args.reply_to, "reply_to")
     return withMirror(ctx, args.account, (mirror, me) => {
       const prepared = prepareSend(mirror, me, { chat: args.chat, replyTo }, Date.now())
-      const subject = chatSubject(mirror, prepared)
+      const subject = chatSubject(mirror, prepared, excludedChats(ctx))
       return {
         headline: prepared.quote
           ? replyHeadline(subject, prepared.quote, REPLY_HEADLINES)
