@@ -1,5 +1,5 @@
 {
-  "name": "craft-agent",
+  "name": "signal-tools",
   "interface": {
     "displayName": "Craft Agent"
   },
